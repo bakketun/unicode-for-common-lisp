@@ -1,7 +1,6 @@
 (in-package #:unicode)
 
 
-(string-to-unicode-utf-32 "hello world…")
 (to-utf-32 "hello world…")
 
 (code-point-at "hello world" 1)
@@ -12,7 +11,9 @@
 
 (code-point-count (to-utf-16 "💩a…💩"))
 
-(to-utf-16 "💩a…💩")
+(sb-ext:octets-to-string (unicode-data (to-utf-8 (to-utf-16 "💩a…💩"))))
+
+(unicode-data (to-utf-16 (string (code-char #x10302))))
 
 (unicode-to-string (to-utf-16 "💩a…💩"))
 
@@ -20,7 +21,7 @@
 
 (to-utf-8 "💩a…💩")
 
-(sb-ext:octets-to-string (unicode-data (to-utf-8 (to-utf-32 (to-utf-16 (to-utf-8 (to-utf-16 "blåbærsyltetøy")))))))
+(sb-ext:octets-to-string (unicode-utf-8-data (to-utf-8 (to-utf-32 (to-utf-16 (to-utf-8 (to-utf-16 "blåbærsyltetøy")))))))
 
 (defun code-point-to-utf-8% (code-point)
   (let ((buffer (make-array 4 :element-type '(unsigned-byte 8))))
@@ -32,3 +33,13 @@
 (code-point-to-utf-8% #xA2)
 (code-point-to-utf-8% #x20AC)
 (code-point-to-utf-8% #x10348)
+
+
+(to-utf-8 (string (code-char #xD800)))
+(to-utf-16 (string (code-char #xD800)))
+
+
+
+;; Possible problems:
+;; Is a noncharacter, D14
+;; 

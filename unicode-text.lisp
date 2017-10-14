@@ -1,8 +1,29 @@
 (in-package #:unicode)
 
 
+(deftype code-point ()
+  '(integer #x0 #x10FFFF))
+
+
+(deftype unicode-scalar ()
+  '(or (integer 0 #xD7FF)
+    (integer #xE000 #x10FFFF)))
+
+
 (defgeneric code-point-at (unicode index))
-(defgeneric unicode-length (unicode))
+
+
+(declaim (inline unicode-length))
+
+;;(defgeneric unicode-length (unicode))
+(defun unicode-length (unicode)
+  (declare (inline unicode-length) (optimize (speed 3)))
+  (etypecase unicode
+    (string (length unicode))
+    (unicode-utf-8 (length (unicode-utf-8-data unicode)))
+    (unicode-utf-16 (length (unicode-utf-16-data unicode)))
+    (unicode-utf-32 (length (unicode-utf-32-data unicode)))))
+
 
 (defun next-code-point (unicode index)
   (nth-value 1 (code-point-at unicode index)))
@@ -14,18 +35,39 @@
         count t))
 
 
-(defun map-code-points (function unicode)
+'(defun map-code-points (function unicode)
+  (declare (inline unicode-length)
+           (optimize (speed 3))
+           (function function))
   (loop with code-point
-        with index = 0
+        with index fixnum = 0
         while (< index (unicode-length unicode))
         do (multiple-value-setq (code-point index) (code-point-at unicode index))
         do (funcall function code-point)))
 
 
+(defmacro do-code-points ((var unicode) &body body)
+  (let ((index (gensym "INDEX"))
+        (unicode-var (gensym "UNICODE-VAR")))
+    `(loop with ,var of-type code-point
+           with ,index fixnum = 0
+           with ,unicode-var = ,unicode
+           while (< ,index (unicode-length ,unicode-var))
+           do (multiple-value-setq (,var ,index) (code-point-at ,unicode-var ,index))
+           do (progn ,@body))))
+
+
+(defun map-code-points (function unicode)
+  (declare (optimize (speed 3))
+           (function function))
+  (do-code-points (code-point unicode)
+    (funcall function code-point)))
+
+
 ;;; utf-32 string as unicode
 
 
-(defmethod unicode-length ((unicode string))
+'(defmethod unicode-length ((unicode string))
   (length unicode))
 
 
@@ -47,23 +89,30 @@
 ;;; generic unicode type
 
 
-(defclass unicode ()
-  ((data :initarg :data :accessor unicode-data)))
+'(defstruct unicode
+  (data #() :type vector))
+
+'(defclass unicode ()
+  ((data :initarg :data :accessor unicode-data :type 'vector)))
 
 
-(defmethod unicode-length ((unicode unicode))
+'(defmethod unicode-length ((unicode unicode))
   (length (slot-value unicode 'data)))
 
 
 ;;; utf-32
 
 
-(defclass unicode-utf-32 (unicode)
+'(defclass unicode-utf-32 (unicode)
   ())
 
 
+(defstruct unicode-utf-32
+  (data nil :type (vector (unsigned-byte 32))))
+
+
 (defmethod code-point-at ((unicode unicode-utf-32) index)
-  (values (aref (unicode-data unicode) index)
+  (values (aref (unicode-utf-32-data unicode) index)
           (1+ index)))
 
 
@@ -74,20 +123,24 @@
                        (setf (aref data index) code-point)
                        (incf index))
                      unicode)
-    (make-instance 'unicode-utf-32 :data data)))
+    (make-unicode-utf-32 :data data)))
 
 
 ;;; utf-16
 
 
-(defclass unicode-utf-16 (unicode)
+'(defclass unicode-utf-16 (unicode)
   ())
 
 
+(defstruct unicode-utf-16
+  (data nil :type (vector (unsigned-byte 16))))
+
+
 (defmethod code-point-at ((unicode unicode-utf-16) index)
-  (let ((lead (aref (unicode-data unicode) index)))
+  (let ((lead (aref (unicode-utf-16-data unicode) index)))
     (if (<= #xD800 lead #xDBFF)
-        (let ((tail (aref (unicode-data unicode) (1+ index))))
+        (let ((tail (aref (unicode-utf-16-data unicode) (1+ index))))
           (values (+ #x10000
                      (ash (- lead #xD800) 10)
                      (- tail #xDC00))
@@ -106,27 +159,29 @@
 
 
 (defun to-utf-16 (unicode)
+  (declare (optimize (speed 3)))
   (let ((data (make-array (utf-16-length unicode) :element-type '(unsigned-byte 16)))
         (index 0))
-    (map-code-points (lambda (code-point)
-                       (cond ((< code-point #xFFFF)
-                              (setf (aref data index) code-point)
-                              (incf index 1))
-                             (t
-                              (let ((tmp (- code-point #x010000)))
-                                (setf (aref data index) (+ #xD800 (ldb (byte 10 10) tmp)))
-                                (setf (aref data (1+ index)) (+ #xDC00 (ldb (byte 10 0) tmp))))
-                              (incf index 2))
-                             ))
-                     unicode)
-    (make-instance 'unicode-utf-16 :data data)))
+    (do-code-points (code-point unicode)
+      (cond ((< code-point #xFFFF)
+             (setf (aref data index) code-point)
+             (incf index 1))
+            (t
+             (setf (aref data index) (+ #xD7C0 (ldb (byte 10 10) code-point)))
+             (setf (aref data (1+ index)) (+ #xDC00 (ldb (byte 10 0) code-point)))
+             (incf index 2))))
+    (make-unicode-utf-16 :data data)))
 
 
 ;;; utf-8
 
 
-(defclass unicode-utf-8 (unicode)
+'(defclass unicode-utf-8 (unicode)
   ())
+
+
+(defstruct unicode-utf-8
+  (data nil :type (vector (unsigned-byte 8))))
 
 
 (defun utf-8-length (unicode)
@@ -146,8 +201,8 @@
 
 (defmethod code-point-at ((unicode unicode-utf-8) index)
   (flet ((cbyte (n)
-           (ldb (byte 6 0) (aref (unicode-data unicode) (+ n index)))))
-    (let ((leader (aref (unicode-data unicode) index)))
+           (ldb (byte 6 0) (aref (unicode-utf-8-data unicode) (+ n index)))))
+    (let ((leader (aref (unicode-utf-8-data unicode) index)))
       (cond ((< leader #x80)
              (values leader (1+ index)))
             ((= #b110 (ldb (byte 3 5) leader))
@@ -226,4 +281,4 @@
     (map-code-points (lambda (code-point)
                        (setf index (code-point-to-utf-8 code-point data index)))
                      unicode)
-    (make-instance 'unicode-utf-8 :data data)))
+    (make-unicode-utf-8 :data data)))
