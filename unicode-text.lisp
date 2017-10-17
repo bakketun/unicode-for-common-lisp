@@ -50,43 +50,72 @@
 
 (defgeneric code-point (unicode index)
   (:method (unicode index)
-    (etypecase unicode
-      (utf-8
-       ;; TODO Follow best partices, page 96
-       (flet ((cbyte (n)
-                (ldb (byte 6 0) (u8ref unicode (+ n index)))))
-         (let ((leader (u8ref unicode index)))
-           (cond ((< leader #x80)
-                  (values leader (1+ index)))
-                 ((= #b110 (ldb (byte 3 5) leader))
-                  (values (logxor (ash (ldb (byte 5 0) leader) 6)
-                                  (cbyte 1))
-                          (+ 2 index)))
-                 ((= #b1110 (ldb (byte 4 4) leader))
-                  (values (logxor (ash (ldb (byte 4 0) leader) 12)
-                                  (ash (cbyte 1) 6)
-                                  (cbyte 2))
-                          (+ 3 index)))
-                 ((= #b11110 (ldb (byte 5 3) leader))
-                  (values (logxor (ash (ldb (byte 3 0) leader) 18)
-                                  (ash (cbyte 1) 12)
-                                  (ash (cbyte 2) 6)
-                                  (cbyte 3))
-                          (+ 4 index)))
-                 (t (error "Invalid utf-8"))))))
-      (utf-16
-       ;; TODO Invalid code surrugates?
-       (let ((lead (u16ref unicode index)))
-         (if (<= #xD800 lead #xDBFF)
-             (let ((tail (u16ref unicode (1+ index))))
-               (values (+ #x10000
-                          (ash (- lead #xD800) 10)
-                          (- tail #xDC00))
-                       (+ 2 index)))
-             (values lead (1+ index)))))
-      (utf-32
-       ;; TODO verify that char-code is a unicode-scalar
-       (values (u32ref unicode index) (1+ index))))))
+    (restart-case
+        (etypecase unicode
+          (utf-8
+           (let ((code-point (u8ref unicode index))
+                 (lower #x80)
+                 (upper #XBF))
+             (flet ((cbyte ()
+                      (unless (< index (unicode-length unicode))
+                        (error "End of string in UTF-8 sequence."))
+                      (let ((byte (u8ref unicode index)))
+                        (unless (<= lower byte upper)
+                          (error "Invalid UTF-8 scalar ~X" byte))
+                        (setf code-point (logxor (ash code-point 6)
+                                                 (ldb (byte 6 0) byte)))
+                        (setf lower #x80)
+                        (setf upper #xBF)
+                        (incf index))))
+               (incf index)
+               (typecase code-point
+                 ((integer #x00 #x7F))
+                 ((integer #xC2 #xDF)
+                  (cbyte))
+                 ((integer #xE0 #xEF)
+                  (when (= #xE0 code-point)
+                    (setf lower #xA0))
+                  (when (= #xED code-point)
+                    (setf upper #x9F))
+                  (cbyte)
+                  (cbyte))
+                 ((integer #xF0 #xF4)
+                  (when (= #xF0 code-point)
+                    (setf lower #x90))
+                  (when (= #xED code-point)
+                    (setf upper #x8F))
+                  (cbyte)
+                  (cbyte)
+                  (cbyte))
+                 (t
+                  (error "Invalid UTF-8 scalar ~X" code-point))))
+             (values code-point index)))
+          (utf-16
+           (let ((lead (u16ref unicode index)))
+             (incf index)
+             (cond ((<= #xD800 lead #xDBFF)
+                    (unless (< index (unicode-length unicode))
+                      (error "End of string in UTF-16 sequence."))
+                    (let ((tail (u16ref unicode index)))
+                      (unless (<= #xDC00 tail #xDFFF)
+                        (error "Invalid UTF-16 tail ~X" tail))
+                      (incf index)
+                      (values (+ #x10000
+                                 (ash (- lead #xD800) 10)
+                                 (- tail #xDC00))
+                              index)))
+                   (t
+                    (when (<= #xDC00 lead #xDFFF)
+                      (error "Lone UTF-16 tail surrage ~X" lead))
+                    (values lead index)))))
+          (utf-32
+           (let ((code-point (u32ref unicode index)))
+             (incf index)
+             (unless (typep code-point 'unicode-scalar)
+               (error "Surrogate code point in UTF-32 ~X" code-point))
+             (values code-point index))))
+      (use-replacement ()
+        (values #xFFFD index)))))
 
 (defgeneric set-code-point (unicode index code-point)
   (:method (unicode index code-point)
@@ -130,45 +159,6 @@
       (utf-32
        (setf (u32ref unicode index) code-point)
        (1+ index)))))
-
-(defun utf-8-code-units (code-point)
-  (cond ((< code-point #x80)
-         (values 1 code-point 0 0 0))
-       ((< code-point #x800)
-        (values 2
-                (logxor #b11000000 (ldb (byte 5 6) code-point))
-                (logxor #b10000000 (ldb (byte 6 0) code-point))
-                0
-                0))
-       ((< code-point #x10000)
-        (values 3
-                (logxor #b11100000 (ldb (byte 4 12) code-point))
-                (logxor #b10000000 (ldb (byte 6 6) code-point))
-                (logxor #b10000000 (ldb (byte 6 0) code-point))
-                0))
-       (t
-        (values 4
-                (logxor #b11110000 (ldb (byte 3 18) code-point))
-                (logxor #b10000000 (ldb (byte 6 12) code-point))
-                (logxor #b10000000 (ldb (byte 6 6) code-point))
-                (logxor #b10000000 (ldb (byte 6 0) code-point))))))
-
-(defun utf-16-code-units (code-point)
-  (cond ((< code-point #xFFFF)
-         (values 1 code-point 0))
-        (t
-         (values 2
-                 (+ #xD7C0 (ldb (byte 10 10) code-point))
-                 (+ #xDC00 (ldb (byte 10 0) code-point))))))
-
-(defun utf-32-code-units (code-point)
-  (values 1 code-point))
-
-(defun code-units-for (format code-point)
-  (etypecase format
-    ((or utf-8 (member utf-8)) (utf-8-code-units code-point))
-    ((or utf-16 (member utf-16)) (utf-16-code-units code-point))
-    ((or utf-32 (member utf-32)) (utf-32-code-units code-point))))
 
 (defun next-code-point (unicode index)
   (nth-value 1 (code-point unicode index)))
