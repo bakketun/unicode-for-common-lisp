@@ -105,8 +105,10 @@
                  (typecase code-point
                    ((integer #x00 #x7F))
                    ((integer #xC2 #xDF)
+                    (setf code-point (ldb (byte 6 0) code-point))
                     (cbyte))
                    ((integer #xE0 #xEF)
+                    (setf code-point (ldb (byte 5 0) code-point))
                     (when (= #xE0 code-point)
                       (setf lower #xA0))
                     (when (= #xED code-point)
@@ -114,6 +116,7 @@
                     (cbyte)
                     (cbyte))
                    ((integer #xF0 #xF4)
+                    (setf code-point (ldb (byte 4 0) code-point))
                     (when (= #xF0 code-point)
                       (setf lower #x90))
                     (when (= #xED code-point)
