@@ -1,6 +1,6 @@
 (in-package #:unicode)
 
-(defvar *read-unicode-format* 'utf-16)
+(defvar *read-unicode-format* 'string)
 
 (defun unicode-reader (s c n)
   (declare (ignore c))
@@ -8,6 +8,7 @@
                   (8 'utf-8)
                   (16 'utf-16)
                   (32 'utf-32)
+                  (0 'string)
                   ((nil) *read-unicode-format*)
                   (otherwise
                    (error "Invalid unicode format: ~S" n)))))

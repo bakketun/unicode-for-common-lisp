@@ -262,6 +262,7 @@
 
 (defun unicode-length-for (target source)
   (etypecase target
+    ((member string) (unicode-length-for "" source))
     ((or utf-8 (member utf-8)) (utf-8-length source))
     ((or utf-16 (member utf-16)) (utf-16-length source))
     ((or utf-32 (member utf-32)) (utf-32-length source))))
@@ -413,12 +414,14 @@
                                     (case format
                                       (utf-8 (check-type thing utf-8-code-unit))
                                       (utf-16 (check-type thing utf-16-code-unit))
-                                      (utf-32 (check-type thing utf-32-code-unit)))
+                                      (utf-32 (check-type thing utf-32-code-unit))
+                                      (string (check-type thing char-code)))
                                     1))))
            (unicode (case format
                       (utf-8 (make-utf-8 length))
                       (utf-16 (make-utf-16 length))
-                      (utf-32 (make-utf-32 length)))))
+                      (utf-32 (make-utf-32 length))
+                      (string (make-string length)))))
       (loop with index = 0
             for elt in data
             do (etypecase elt
@@ -441,6 +444,9 @@
 
 (defun utf-32 (&rest data)
   (apply #'make-unicode 'utf-32 data))
+
+(defun unicode-string (&rest data)
+  (apply #'make-unicode 'string data))
 
 
 ;; printing unicode readable
