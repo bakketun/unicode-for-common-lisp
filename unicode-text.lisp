@@ -348,6 +348,10 @@
 (defstruct %utf-8
   (data nil :type (vector utf-8-code-unit)))
 
+(defmethod make-load-form ((unicode %utf-8) &optional environment)
+  (declare (ignore environment))
+  `(make-%utf-8 :data ,(%utf-8-data unicode)))
+
 (defun make-utf-8 (count)
   (make-%utf-8 :data (make-array count :element-type 'utf-8-code-unit)))
 
@@ -368,6 +372,10 @@
 (defstruct %utf-16
   (data nil :type (vector utf-16-code-unit)))
 
+(defmethod make-load-form ((unicode %utf-16) &optional environment)
+  (declare (ignore environment))
+  `(make-%utf-16 :data ,(%utf-16-data unicode)))
+
 (defun make-utf-16 (count)
   (make-%utf-16 :data (make-array count :element-type 'utf-16-code-unit)))
 
@@ -387,6 +395,10 @@
 
 (defstruct %utf-32
   (data nil :type (vector utf-32-code-unit)))
+
+(defmethod make-load-form ((unicode %utf-32) &optional environment)
+  (declare (ignore environment))
+  `(make-%utf-32 :data ,(%utf-32-data unicode)))
 
 (defun make-utf-32 (count)
   (make-%utf-32 :data (make-array count :element-type 'utf-32-code-unit)))

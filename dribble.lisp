@@ -30,5 +30,9 @@
 #8U+20AC
 #8U+10348
 
+(utf-32 #8u+0430)
+(utf-32 #8u+4E8C)
+(utf-32 #8u+10302)
+
 (defun print-hello ()
   (print (unicode-to-string #8u"hello world…")))
