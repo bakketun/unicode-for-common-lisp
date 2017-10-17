@@ -16,6 +16,8 @@
 
 (utf-16 "hello💩")
 
+(code-point-count "💩a…💩")
+
 (code-point-count (utf-16 "💩a…💩"))
 
 (unicode-to-string (utf-16 "💩a…💩"))
@@ -24,6 +26,9 @@
 
 (utf-8 "💩a…💩")
 
+(unicode-to-string (utf-8 (utf-32 (utf-16 (utf-8 (utf-16 "blåbærsyltetøy"))))))
+
+#+sbcl
 (sb-ext:octets-to-string (unicode::%utf-8-data (utf-8 (utf-32 (utf-16 (utf-8 (utf-16 "blåbærsyltetøy")))))))
 
 #8U+A2

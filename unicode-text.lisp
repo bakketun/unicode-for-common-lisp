@@ -14,6 +14,7 @@
 (deftype utf-8-code-unit () '(unsigned-byte 8))
 (deftype utf-16-code-unit () '(unsigned-byte 16))
 (deftype utf-32-code-unit () '(unsigned-byte 32))
+(deftype string-code-unit () `(integer 0 ,(1- char-code-limit)))
 
 (defgeneric utf-8-p (thing) (:method (thing)))
 (deftype utf-8 () '(satisfies utf-8-p))
@@ -430,7 +431,7 @@
                                       (utf-8 (check-type thing utf-8-code-unit))
                                       (utf-16 (check-type thing utf-16-code-unit))
                                       (utf-32 (check-type thing utf-32-code-unit))
-                                      (string (check-type thing char-code)))
+                                      (string (check-type thing string-code-unit)))
                                     1))))
            (unicode (case format
                       (utf-8 (make-utf-8 length))

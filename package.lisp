@@ -13,6 +13,7 @@
    :map-code-points
    :next-code-point
    :set-code-point
+   :string-code-unit
    :u8ref
    :u16ref
    :u32ref
