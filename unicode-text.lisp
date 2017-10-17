@@ -46,76 +46,118 @@
 (defgeneric (setf u32ref) (code-unit unicode index))
 
 
-;; Code point intercafe
+;; Code point interface
+
+(defvar *unicode-transform-error-handling*)
+
+(define-condition unicode-transform-error (error)
+  ((unicode :initarg :unicode :reader unicode-transform-error-unicode)
+   (control :initarg :control :reader unicode-transform-error-control)
+   (arguments :initarg :arguments :reader unicode-transform-error-arguments))
+  (:report (lambda (c stream)
+             (apply #'format stream
+                    (unicode-transform-error-control c)
+                    (unicode-transform-error-arguments c)))))
+
+(defun transform-error (unicode control &rest arguments)
+  (when (boundp '*unicode-transform-error-handling*)
+    ;;(let ((*print-circle* t)) (format t "~&h ~S ~%" (car *unicode-transform-error-handling*)))
+    (let ((method (cdr (assoc unicode (car *unicode-transform-error-handling*)))))
+      (when method
+        (let ((restart (and *unicode-transform-error-handling* (find-restart method))))
+          (when restart
+            (invoke-restart restart))))))
+  (error 'unicode-transform-error :unicode unicode :control control :arguments arguments))
+
+(defmacro with-transform-error-restarts (&body body)
+  `(let ((*unicode-transform-error-handling*
+           (or (and (boundp '*unicode-transform-error-handling*)
+                    *unicode-transform-error-handling*)
+               (list (list)))))
+     ,@body))
+
+(defun show-restarts-p (c)
+  (and (or (null c)
+           (typep c 'unicode-transform-error))
+       (boundp '*unicode-transform-error-handling*)))
 
 (defgeneric code-point (unicode index)
   (:method (unicode index)
-    (restart-case
-        (etypecase unicode
-          (utf-8
-           (let ((code-point (u8ref unicode index))
-                 (lower #x80)
-                 (upper #XBF))
-             (flet ((cbyte ()
-                      (unless (< index (unicode-length unicode))
-                        (error "End of string in UTF-8 sequence."))
-                      (let ((byte (u8ref unicode index)))
-                        (unless (<= lower byte upper)
-                          (error "Invalid UTF-8 scalar ~X" byte))
-                        (setf code-point (logxor (ash code-point 6)
-                                                 (ldb (byte 6 0) byte)))
-                        (setf lower #x80)
-                        (setf upper #xBF)
-                        (incf index))))
-               (incf index)
-               (typecase code-point
-                 ((integer #x00 #x7F))
-                 ((integer #xC2 #xDF)
-                  (cbyte))
-                 ((integer #xE0 #xEF)
-                  (when (= #xE0 code-point)
-                    (setf lower #xA0))
-                  (when (= #xED code-point)
-                    (setf upper #x9F))
-                  (cbyte)
-                  (cbyte))
-                 ((integer #xF0 #xF4)
-                  (when (= #xF0 code-point)
-                    (setf lower #x90))
-                  (when (= #xED code-point)
-                    (setf upper #x8F))
-                  (cbyte)
-                  (cbyte)
-                  (cbyte))
-                 (t
-                  (error "Invalid UTF-8 scalar ~X" code-point))))
-             (values code-point index)))
-          (utf-16
-           (let ((lead (u16ref unicode index)))
-             (incf index)
-             (cond ((<= #xD800 lead #xDBFF)
-                    (unless (< index (unicode-length unicode))
-                      (error "End of string in UTF-16 sequence."))
-                    (let ((tail (u16ref unicode index)))
-                      (unless (<= #xDC00 tail #xDFFF)
-                        (error "Invalid UTF-16 tail ~X" tail))
-                      (incf index)
-                      (values (+ #x10000
-                                 (ash (- lead #xD800) 10)
-                                 (- tail #xDC00))
-                              index)))
+    (with-transform-error-restarts
+      (restart-case
+          (etypecase unicode
+            (utf-8
+             (let ((code-point (u8ref unicode index))
+                   (lower #x80)
+                   (upper #XBF))
+               (flet ((cbyte ()
+                        (unless (< index (unicode-length unicode))
+                          (transform-error unicode "End of string in UTF-8 sequence."))
+                        (let ((byte (u8ref unicode index)))
+                          (unless (<= lower byte upper)
+                            (transform-error unicode "Invalid UTF-8 scalar ~X" byte))
+                          (setf code-point (logxor (ash code-point 6)
+                                                   (ldb (byte 6 0) byte)))
+                          (setf lower #x80)
+                          (setf upper #xBF)
+                          (incf index))))
+                 (incf index)
+                 (typecase code-point
+                   ((integer #x00 #x7F))
+                   ((integer #xC2 #xDF)
+                    (cbyte))
+                   ((integer #xE0 #xEF)
+                    (when (= #xE0 code-point)
+                      (setf lower #xA0))
+                    (when (= #xED code-point)
+                      (setf upper #x9F))
+                    (cbyte)
+                    (cbyte))
+                   ((integer #xF0 #xF4)
+                    (when (= #xF0 code-point)
+                      (setf lower #x90))
+                    (when (= #xED code-point)
+                      (setf upper #x8F))
+                    (cbyte)
+                    (cbyte)
+                    (cbyte))
                    (t
-                    (when (<= #xDC00 lead #xDFFF)
-                      (error "Lone UTF-16 tail surrage ~X" lead))
-                    (values lead index)))))
-          (utf-32
-           (let ((code-point (u32ref unicode index)))
-             (incf index)
-             (unless (typep code-point 'unicode-scalar)
-               (error "Surrogate code point in UTF-32 ~X" code-point))
-             (values code-point index))))
-      (use-replacement ()
-        (values #xFFFD index)))))
+                    (transform-error unicode "Invalid UTF-8 scalar ~X" code-point))))
+               (values code-point index)))
+            (utf-16
+             (let ((lead (u16ref unicode index)))
+               (incf index)
+               (cond ((<= #xD800 lead #xDBFF)
+                      (unless (< index (unicode-length unicode))
+                        (transform-error unicode "End of string in UTF-16 sequence."))
+                      (let ((tail (u16ref unicode index)))
+                        (unless (<= #xDC00 tail #xDFFF)
+                          (transform-error "Invalid UTF-16 tail ~X" tail))
+                        (incf index)
+                        (values (+ #x10000
+                                   (ash (- lead #xD800) 10)
+                                   (- tail #xDC00))
+                                index)))
+                     (t
+                      (when (<= #xDC00 lead #xDFFF)
+                        (transform-error unicode "Lone UTF-16 tail surrage ~X" lead))
+                      (values lead index)))))
+            (utf-32
+             (let ((code-point (u32ref unicode index)))
+               (incf index)
+               (unless (typep code-point 'unicode-scalar)
+                 (transform-error unicode "Surrogate code point in UTF-32 ~X" code-point))
+               (values code-point index))))
+        (replace ()
+          :report "Use replacement character U+FFFD for invalid code units in this unicode string."
+          :test show-restarts-p
+          (pushnew (cons unicode 'replace) (car *unicode-transform-error-handling*) :key #'car)
+          (values #xFFFD index 'replace))
+        (skip ()
+          :report "Skip all invalid code units in this unicode string."
+          :test show-restarts-p
+          (pushnew (cons unicode 'skip) (car *unicode-transform-error-handling*) :key #'car)
+          (values #xFFFD index 'skip))))))
 
 (defgeneric set-code-point (unicode index code-point)
   (:method (unicode index code-point)
@@ -161,22 +203,32 @@
        (1+ index)))))
 
 (defun next-code-point (unicode index)
-  (nth-value 1 (code-point unicode index)))
+  (multiple-value-bind (code-point index skip)
+      (code-point unicode index)
+    (declare (ignore code-point))
+    (values index skip)))
 
 (defun code-point-count (unicode)
-  (loop for index = 0 then (next-code-point unicode index)
-        while (< index (unicode-length unicode))
-        count t))
+  (with-transform-error-restarts
+    (loop with index = 0
+          with skip
+          while (< index (unicode-length unicode))
+          do (multiple-value-setq (index skip) (next-code-point unicode index))
+          count (not (eql 'skip skip)))))
 
 (defmacro do-code-points ((var unicode) &body body)
-  (let ((index (gensym "INDEX"))
-        (unicode-var (gensym "UNICODE-VAR")))
-    `(loop with ,var of-type code-point = 0
-           with ,index fixnum = 0
-           with ,unicode-var = ,unicode
-           while (< ,index (the fixnum (unicode-length ,unicode-var)))
-           do (multiple-value-setq (,var ,index) (code-point ,unicode-var ,index))
-           do (progn ,@body))))
+  (with-transform-error-restarts
+    (let ((index (gensym "INDEX"))
+          (skip (gensym "SKIP"))
+          (unicode-var (gensym "UNICODE-VAR")))
+      `(loop with ,skip
+             with ,var of-type code-point = 0
+             with ,index fixnum = 0
+             with ,unicode-var = ,unicode
+             while (< ,index (the fixnum (unicode-length ,unicode-var)))
+             do (multiple-value-setq (,var ,index ,skip) (code-point ,unicode-var ,index))
+             unless (eq ,skip 'skip)
+               do (progn ,@body)))))
 
 (defun map-code-points (function unicode)
   (declare (optimize (speed 3))
@@ -352,33 +404,34 @@
 ;; unicode constructors
 
 (defun make-unicode (format &rest data)
-  (let* ((length (loop for thing in data
-                       summing (etypecase thing
-                                 (unicode
-                                  (unicode-length-for format thing))
-                                 (integer
-                                   (case format
-                                     (utf-8 (check-type thing utf-8-code-unit))
-                                     (utf-16 (check-type thing utf-16-code-unit))
-                                     (utf-32 (check-type thing utf-32-code-unit)))
-                                  1))))
-         (unicode (case format
-                    (utf-8 (make-utf-8 length))
-                    (utf-16 (make-utf-16 length))
-                    (utf-32 (make-utf-32 length)))))
-    (loop with index = 0
-          for elt in data
-          do (etypecase elt
-               (unicode
-                (do-code-points (code-point elt)
-                  (setf index (set-code-point unicode index code-point))))
-               (integer
-                (etypecase unicode
-                  (utf-8 (setf (u8ref unicode index) elt))
-                  (utf-16 (setf (u16ref unicode index) elt))
-                  (utf-32 (setf (u32ref unicode index) elt)))
-                (incf index))))
-    unicode))
+  (with-transform-error-restarts
+    (let* ((length (loop for thing in data
+                         summing (etypecase thing
+                                   (unicode
+                                    (unicode-length-for format thing))
+                                   (integer
+                                    (case format
+                                      (utf-8 (check-type thing utf-8-code-unit))
+                                      (utf-16 (check-type thing utf-16-code-unit))
+                                      (utf-32 (check-type thing utf-32-code-unit)))
+                                    1))))
+           (unicode (case format
+                      (utf-8 (make-utf-8 length))
+                      (utf-16 (make-utf-16 length))
+                      (utf-32 (make-utf-32 length)))))
+      (loop with index = 0
+            for elt in data
+            do (etypecase elt
+                 (unicode
+                  (do-code-points (code-point elt)
+                    (setf index (set-code-point unicode index code-point))))
+                 (integer
+                  (etypecase unicode
+                    (utf-8 (setf (u8ref unicode index) elt))
+                    (utf-16 (setf (u16ref unicode index) elt))
+                    (utf-32 (setf (u32ref unicode index) elt)))
+                  (incf index))))
+      unicode)))
 
 (defun utf-8 (&rest data)
   (apply #'make-unicode 'utf-8 data))
