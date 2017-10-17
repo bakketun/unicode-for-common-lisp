@@ -195,7 +195,7 @@
                     (logxor #b10000000 (ldb (byte 6 0) code-point)))
               (+ 4 index))))
       (utf-16
-       (cond ((< code-point #xFFFF)
+       (cond ((<= code-point #xFFFF)
               (setf (u16ref unicode index) code-point)
               (1+ index))
              (t

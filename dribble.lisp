@@ -4,6 +4,10 @@
 (in-package #:unicode-user)
 
 
+#16U+FFFF
+(utf-16 (utf-32 #xFFFF))
+
+
 #U+1f4a9
 #8U+1f4a9
 (list #8u"hello world…")
