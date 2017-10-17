@@ -6,6 +6,7 @@
 (defpackage #:unicode
   (:use :common-lisp)
   (:export
+   :+string-unicode-type+
    :code-point
    :code-point-count
    :do-code-points
@@ -18,8 +19,10 @@
    :u16ref
    :u32ref
    :unicode
+   :unicode-constructor-for
    :unicode-length
    :unicode-length-for
+   :unicode-ref
    :unicode-scalar
    :unicode-string
    :unicode-to-string

@@ -46,6 +46,18 @@
 (defgeneric (setf u16ref) (code-unit unicode index))
 (defgeneric (setf u32ref) (code-unit unicode index))
 
+(defun unicode-ref (unicode index)
+  (etypecase unicode
+    (utf-8 (u8ref unicode index))
+    (utf-16 (u16ref unicode index))
+    (utf-32 (u32ref unicode index))))
+
+(defun (setf unicode-ref) (code-unit unicode index)
+  (etypecase unicode
+    (utf-8 (setf (u8ref unicode index) code-unit))
+    (utf-16 (setf (u16ref unicode index) code-unit))
+    (utf-32 (setf (u32ref unicode index) code-unit))))
+
 
 ;; Code point interface
 
@@ -265,11 +277,12 @@
   (code-point-count unicode))
 
 (defun unicode-length-for (target source)
-  (etypecase target
-    ((member string) (unicode-length-for "" source))
-    ((or utf-8 (member utf-8)) (utf-8-length source))
-    ((or utf-16 (member utf-16)) (utf-16-length source))
-    ((or utf-32 (member utf-32)) (utf-32-length source))))
+  (case target
+    (utf-8 (utf-8-length source))
+    (utf-16 (utf-16-length source))
+    (utf-32 (utf-32-length source))
+    (otherwise
+     (unicode-length-for (nth-value 1 (unicode-constructor-for target)) source))))
 
 
 ;; Strings as unicode text
@@ -293,6 +306,8 @@
 ;; String as utf-8
 #+utf-8-strings
 (progn
+  (defconstant +string-unicode-type+ 'utf-8)
+
   (defmethod utf-8-p ((unicode string)) t)
 
   (defmethod unicode-length ((unicode string))
@@ -309,6 +324,8 @@
 ;; String as utf-16
 #+utf-16-strings
 (progn
+  (defconstant +string-unicode-type+ 'utf-16)
+
   (defmethod utf-16-p ((unicode string)) t)
 
   (defmethod unicode-length ((unicode string))
@@ -325,6 +342,8 @@
 ;; String as utf-32
 #+utf-32-strings
 (progn
+  (defconstant +string-unicode-type+ 'utf-32)
+
   (defmethod utf-32-p ((unicode string)) t)
 
   (defmethod unicode-length ((unicode string))
@@ -420,37 +439,42 @@
 
 ;; unicode constructors
 
-(defun make-unicode (format &rest data)
-  (with-transform-error-restarts
-    (let* ((length (loop for thing in data
-                         summing (etypecase thing
-                                   (unicode
-                                    (unicode-length-for format thing))
-                                   (integer
-                                    (case format
-                                      (utf-8 (check-type thing utf-8-code-unit))
-                                      (utf-16 (check-type thing utf-16-code-unit))
-                                      (utf-32 (check-type thing utf-32-code-unit))
-                                      (string (check-type thing string-code-unit)))
-                                    1))))
-           (unicode (case format
-                      (utf-8 (make-utf-8 length))
-                      (utf-16 (make-utf-16 length))
-                      (utf-32 (make-utf-32 length))
-                      (string (make-string length)))))
-      (loop with index = 0
-            for elt in data
-            do (etypecase elt
-                 (unicode
-                  (do-code-points (code-point elt)
-                    (setf index (set-code-point unicode index code-point))))
-                 (integer
-                  (etypecase unicode
-                    (utf-8 (setf (u8ref unicode index) elt))
-                    (utf-16 (setf (u16ref unicode index) elt))
-                    (utf-32 (setf (u32ref unicode index) elt)))
-                  (incf index))))
-      unicode)))
+(defgeneric unicode-constructor-for (thing)
+  (:method (thing)
+    (case thing
+      (utf-8 (values #'make-utf-8 'utf-8))
+      (utf-16 (values #'make-utf-16 'utf-16))
+      (utf-32 (values #'make-utf-32 'utf-32))
+      (string (values #'make-string +string-unicode-type+))
+      (otherwise
+       (unicode-constructor-for
+        (etypecase thing
+          (string 'string)
+          (utf-8 'utf-8)
+          (utf-16 'utf-16)
+          (utf-32 'utf-32)))))))
+
+(defun make-unicode (thing &rest data)
+  (multiple-value-bind (constructor format)
+      (unicode-constructor-for thing)
+    (with-transform-error-restarts
+      (let* ((length (loop for thing in data
+                           summing (etypecase thing
+                                     (unicode
+                                      (unicode-length-for format thing))
+                                     (integer
+                                      1))))
+             (unicode (funcall constructor length)))
+        (loop with index = 0
+              for elt in data
+              do (etypecase elt
+                   (unicode
+                    (do-code-points (code-point elt)
+                      (setf index (set-code-point unicode index code-point))))
+                   (integer
+                    (setf (unicode-ref unicode index) elt)
+                    (incf index))))
+        unicode))))
 
 (defun utf-8 (&rest data)
   (apply #'make-unicode 'utf-8 data))
