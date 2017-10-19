@@ -275,7 +275,7 @@
     (utf-16 (utf-16-length source :errors errors))
     (utf-32 (utf-32-length source :errors errors))
     (otherwise
-     (unicode-length-for (nth-value 1 (unicode-constructor-for target)) source :errors errors))))
+     (unicode-length-for (nth-value 1 (unicode-constructor target)) source :errors errors))))
 
 
 ;; Strings as unicode text
@@ -350,15 +350,6 @@
     code-unit))
 
 
-;; Convert unicode back to string
-
-(defun unicode-to-string (unicode)
-  (let ((string (make-string (unicode-length-for "" unicode)))
-        (index 0))
-    (do-code-points (code-point unicode)
-      (setf index (set-code-point string index code-point)))
-    string))
-
 ;; utf-8 unicode
 
 (defstruct %utf-8
@@ -432,24 +423,57 @@
 
 ;; unicode constructors
 
-(defgeneric unicode-constructor-for (thing)
-  (:method (thing)
-    (case thing
-      (utf-8 (values #'make-utf-8 'utf-8))
-      (utf-16 (values #'make-utf-16 'utf-16))
-      (utf-32 (values #'make-utf-32 'utf-32))
-      (string (values #'make-string +string-unicode-type+))
-      (otherwise
-       (unicode-constructor-for
-        (etypecase thing
-          (string 'string)
-          (utf-8 'utf-8)
-          (utf-16 'utf-16)
-          (utf-32 'utf-32)))))))
+(defun unicode-constructor (format)
+  (etypecase format
+    (string (values #'make-string +string-unicode-type+))
+    (utf-8 (values #'make-utf-8 'utf-8))
+    (utf-16 (values #'make-utf-16 'utf-16))
+    (utf-32 (values #'make-utf-32 'utf-32))
+    (symbol
+     (ecase format
+       (string (values #'make-string +string-unicode-type+))
+       (utf-8 (values #'make-utf-8 'utf-8))
+       (utf-16 (values #'make-utf-16 'utf-16))
+       (utf-32 (values #'make-utf-32 'utf-32))))))
 
-(defun make-unicode (thing &rest data)
+(defvar *default-unicode-format* 'string)
+
+(defun make-unicode (count &key format)
+  (funcall (unicode-constructor (or format *default-unicode-format*)) count))
+
+(defun unicode (thing)
+  (if (unicodep thing)
+      thing
+      (unicode* thing)))
+
+(defun utf-8 (thing)
+  (if (utf-8-p thing)
+      thing
+      (utf-8* thing)))
+
+(defun utf-16 (thing)
+  (if (utf-16-p thing)
+      thing
+      (utf-16* thing)))
+
+(defun utf-32 (thing)
+  (if (utf-32-p thing)
+      thing
+      (utf-32* thing)))
+
+(defun unicode-string (thing)
+  (if (stringp thing)
+      thing
+      (unicode-string* thing)))
+
+(defun unicode* (&rest data)
+  (unicode** data))
+
+(defun unicode** (data &optional format)
   (multiple-value-bind (constructor format)
-      (unicode-constructor-for thing)
+      (unicode-constructor (or format *default-unicode-format*))
+    (unless (listp data)
+      (setf data (list data)))
     (let* ((length (loop with errors = nil
                          for elt in data
                          summing (etypecase elt
@@ -475,17 +499,17 @@
                   (incf index))))
       unicode)))
 
-(defun utf-8 (&rest data)
-  (apply #'make-unicode 'utf-8 data))
+(defun utf-8* (&rest data)
+  (unicode** data 'utf-8))
 
-(defun utf-16 (&rest data)
-  (apply #'make-unicode 'utf-16 data))
+(defun utf-16* (&rest data)
+  (unicode** data 'utf-16))
 
-(defun utf-32 (&rest data)
-  (apply #'make-unicode 'utf-32 data))
+(defun utf-32* (&rest data)
+  (unicode** data 'utf-32))
 
-(defun unicode-string (&rest data)
-  (apply #'make-unicode 'string data))
+(defun unicode-string* (&rest data)
+  (unicode** data 'string))
 
 
 ;; printing unicode readable
