@@ -45,3 +45,16 @@
 
 (defun print-hello ()
   (print (unicode-to-string #8u"hello world…")))
+
+(code-point-count (utf-8 #xff #x41))
+(code-point-count (utf-8 #xff #x41) :errors :replace)
+(code-point-count (utf-8 #xff #x41) :errors :ignore)
+
+(let ((unicode::*transform-errors-default* :ignore))
+  (utf-16 (utf-8 #xff #x41)))
+
+(utf-16 :ignore (utf-8 #xff #x41))
+
+(code-point-count (utf-8 #xff #x41) :errors :replace)
+
+(utf-16 :replace (utf-8 #xff #x41) :ignore (utf-8 #xff #x41))
