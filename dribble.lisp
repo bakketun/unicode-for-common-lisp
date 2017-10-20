@@ -35,7 +35,7 @@
 #+sbcl
 (sb-ext:octets-to-string (unicode::%utf-8-data (utf-8 (utf-32 (utf-16 (utf-8 (utf-16 "blåbærsyltetøy")))))))
 
-#8U+A2
+#8U+00A2
 #8U+20AC
 #8U+10348
 
@@ -65,8 +65,6 @@
 
 (utf-8 (utf-8 "hello"))
 
-(list #16u(pile_of_poo greek_capital_letter_delta))
+(list #16u(#u+pile_of_poo #u+greek_capital_letter_delta))
 
-#uGREEK_CAPITAL_LETTER_DELTA
-
-;; (undefined-function #U+1234)
+#u+GREEK_CAPITAL_LETTER_DELTA
