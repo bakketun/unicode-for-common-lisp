@@ -498,8 +498,8 @@
                                     0)
                                    (unicode
                                     (unicode-length-for format elt :errors errors))
-                                   (symbol
-                                    (code-point-length format (symbol-value elt)))
+                                   (character
+                                    (unicode-length-for format (string elt) :errors errors))
                                    (integer
                                     1))))
            (unicode (funcall constructor length)))
@@ -512,8 +512,9 @@
                  (unicode
                   (do-code-points (code-point elt :errors errors)
                     (setf index (set-code-point unicode index code-point))))
-                 (symbol
-                  (setf index (set-code-point unicode index (symbol-value elt))))
+                 (character
+                  (do-code-points (code-point (string elt) :errors errors)
+                    (setf index (set-code-point unicode index code-point))))
                  (integer
                   (setf (unicode-ref unicode index) elt)
                   (incf index))))
