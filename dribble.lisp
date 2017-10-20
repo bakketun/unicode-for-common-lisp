@@ -46,6 +46,8 @@
 (defun print-hello ()
   (print (unicode-string #8u"hello world…")))
 
+(print-hello)
+
 (code-point-count (utf-8* #xff #x41))
 (code-point-count (utf-8* #xff #x41) :errors :replace)
 (code-point-count (utf-8* #xff #x41) :errors :ignore)
@@ -62,3 +64,9 @@
 (unicode* "string" #x42 "string" #U+16222)
 
 (utf-8 (utf-8 "hello"))
+
+(list #16u(pile_of_poo greek_capital_letter_delta))
+
+#uGREEK_CAPITAL_LETTER_DELTA
+
+;; (undefined-function #U+1234)

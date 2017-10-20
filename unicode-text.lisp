@@ -245,29 +245,45 @@
   (do-code-points (code-point unicode :errors errors)
     (funcall function code-point)))
 
+(defun code-point-utf-8-length (code-point)
+  (cond ((< code-point #x80)
+         1)
+        ((< code-point #x800)
+         2)
+        ((< code-point #x10000)
+         3)
+        (t
+         4)))
+
+(defun code-point-utf-16-length (code-point)
+  (if (<= code-point #xFFFF)
+      1
+      2))
+
+(defun code-point-length (target code-point)
+  (case target
+    (utf-8 (code-point-utf-8-length code-point))
+    (utf-16 (code-point-utf-16-length code-point))
+    (utf-32 1)
+    (otherwise
+     (code-point-length (nth-value 1 (unicode-constructor target)) code-point))))
+
 (defun utf-8-length (unicode &key errors)
   (let ((length 0))
     (do-code-points (code-point unicode :errors (replace-when-strict errors))
-      (cond ((< code-point #x80)
-             (incf length 1))
-            ((< code-point #x800)
-             (incf length 2))
-            ((< code-point #x10000)
-             (incf length 3))
-            (t
-             (incf length 4))))
+      (incf length (code-point-utf-8-length code-point)))
     length))
 
 (defun utf-16-length (unicode &key errors)
   (let ((length 0))
     (do-code-points (code-point unicode :errors (replace-when-strict errors))
-      (if (<= code-point #xFFFF)
-          (incf length 1)
-          (incf length 2)))
+      (incf length (code-point-utf-16-length code-point)))
     length))
 
 (defun utf-32-length (unicode &key errors)
   (code-point-count unicode :errors (replace-when-strict errors)))
+
+
 
 (defun unicode-length-for (target source &key errors)
   (case target
@@ -482,6 +498,8 @@
                                     0)
                                    (unicode
                                     (unicode-length-for format elt :errors errors))
+                                   (symbol
+                                    (code-point-length format (symbol-value elt)))
                                    (integer
                                     1))))
            (unicode (funcall constructor length)))
@@ -494,6 +512,8 @@
                  (unicode
                   (do-code-points (code-point elt :errors errors)
                     (setf index (set-code-point unicode index code-point))))
+                 (symbol
+                  (setf index (set-code-point unicode index (symbol-value elt))))
                  (integer
                   (setf (unicode-ref unicode index) elt)
                   (incf index))))
@@ -516,9 +536,14 @@
 
 
 (defun print-unicode-code-units (stream type code-units digits)
-  (format stream "(~S" type)
+  (format stream "#~Au(" (case type
+                           (utf-8 8)
+                           (utf-16 16)
+                           (utf-32 32)))
   (loop for byte across code-units
-        do (format stream " #x~v,'0X" digits byte))
+        for first = t then nil
+        do (unless first (princ " " stream))
+        do (format stream "#x~v,'0X" digits byte))
   (princ ")" stream))
 
 (defmethod print-object ((unicode %utf-8) stream)

@@ -10,14 +10,18 @@
                   ((nil) nil)
                   (otherwise
                    (error "Invalid unicode format: ~S" n)))))
-    (if (eql #\+ (peek-char nil s))
-        (let ((*read-base* 16))
-          (let ((code-point (read s)))
-            (check-type code-point code-point)
-            (unicode** (utf-32 code-point) format)))
-        (let ((data (read s t nil t)))
-          (check-type data (or string list))
-          (unicode** data format)))))
+    (case (peek-char nil s)
+      (#\+
+       (let ((*read-base* 16))
+         (let ((code-point (read s)))
+           (check-type code-point code-point)
+           (unicode** (utf-32 code-point) format))))
+      (otherwise
+       (let ((*package* (find-package :unicode-name)))
+         (let ((data (read s t nil t)))
+           (check-type data (or string list symbol))
+           (unicode** data format)))))))
+
 
 (set-dispatch-macro-character #\# #\u 'unicode-reader)
 
