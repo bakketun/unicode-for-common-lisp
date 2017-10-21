@@ -4,7 +4,10 @@
 (defun find-code-point (name)
   (if (and (<= 4 (length name) 8)
            (loop for char across name always (digit-char-p char 16)))
-      (parse-integer name :radix 16)
+      (let ((code-point (parse-integer name :radix 16)))
+        (unless (typep code-point 'code-point)
+          (error "No character named ~S." name))
+        code-point)
       (let ((char (name-char (substitute #\_ #\- name))))
         (unless char
           (error "No character named ~S." name))

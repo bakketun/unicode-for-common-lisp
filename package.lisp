@@ -8,6 +8,8 @@
   (:export
    :+string-unicode-type+
    :code-point
+   :code-point-at
+   :code-point-before
    :code-point-count
    :do-code-points
    :make-unicode

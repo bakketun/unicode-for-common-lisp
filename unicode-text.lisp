@@ -68,6 +68,9 @@
       *transform-errors-default*
       errors))
 
+(defun strictp (errors)
+  (eq :strict (defaulted-transform-errors errors)))
+
 (defun replace-when-strict (errors)
   (ecase (defaulted-transform-errors errors)
     (:ignore
@@ -84,135 +87,194 @@
                     (unicode-transform-error-control c)
                     (unicode-transform-error-arguments c)))))
 
-(defgeneric code-point (unicode index &key errors)
-  (:method (unicode index &key errors)
-    (block nil
-      (flet ((transform-error (control &rest arguments)
-               (ecase (defaulted-transform-errors errors)
-                 ((:replace)
-                  (return (values #xFFFD index :replace)))
-                 (:ignore
-                  (return (values #xFFFD index :ignore)))
-                 (:strict
-                  (error 'unicode-transform-error :unicode unicode :control control :arguments arguments)))))
-        (restart-case
-            (etypecase unicode
-              (utf-8
-               (let ((code-point (u8ref unicode index))
-                     (lower #x80)
-                     (upper #XBF))
-                 (flet ((cbyte ()
-                          (unless (< index (unicode-length unicode))
-                            (transform-error "End of string in UTF-8 sequence."))
-                          (let ((byte (u8ref unicode index)))
-                            (unless (<= lower byte upper)
-                              (transform-error "Invalid UTF-8 scalar ~X" byte))
-                            (setf code-point (logxor (ash code-point 6)
-                                                     (ldb (byte 6 0) byte)))
-                            (setf lower #x80)
-                            (setf upper #xBF)
-                            (incf index))))
-                   (incf index)
-                   (typecase code-point
-                     ((integer #x00 #x7F))
-                     ((integer #xC2 #xDF)
-                      (setf code-point (ldb (byte 6 0) code-point))
-                      (cbyte))
-                     ((integer #xE0 #xEF)
-                      (setf code-point (ldb (byte 5 0) code-point))
-                      (when (= #xE0 code-point)
-                        (setf lower #xA0))
-                      (when (= #xED code-point)
-                        (setf upper #x9F))
-                      (cbyte)
-                      (cbyte))
-                     ((integer #xF0 #xF4)
-                      (setf code-point (ldb (byte 4 0) code-point))
-                      (when (= #xF0 code-point)
-                        (setf lower #x90))
-                      (when (= #xED code-point)
-                        (setf upper #x8F))
-                      (cbyte)
-                      (cbyte)
-                      (cbyte))
-                     (t
-                      (transform-error "Invalid UTF-8 scalar ~X" code-point))))
-                 (values code-point index)))
-              (utf-16
-               (let ((lead (u16ref unicode index)))
-                 (incf index)
-                 (cond ((<= #xD800 lead #xDBFF)
-                        (unless (< index (unicode-length unicode))
-                          (transform-error "End of string in UTF-16 sequence."))
-                        (let ((tail (u16ref unicode index)))
-                          (unless (<= #xDC00 tail #xDFFF)
-                            (transform-error "Invalid UTF-16 tail ~X" tail))
-                          (incf index)
-                          (values (+ #x10000
-                                     (ash (- lead #xD800) 10)
-                                     (- tail #xDC00))
-                                  index)))
-                       (t
-                        (when (<= #xDC00 lead #xDFFF)
-                          (transform-error "Lone UTF-16 tail surrage ~X" lead))
-                        (values lead index)))))
-              (utf-32
-               (let ((code-point (u32ref unicode index)))
-                 (incf index)
-                 (unless (typep code-point 'unicode-scalar)
-                   (transform-error "Surrogate code point in UTF-32 ~X" code-point))
-                 (values code-point index))))
-          (replace ()
-            :report "Return replacement character U+FFFD."
-            (values #xFFFD index 'replace)))))))
+(defmacro with-transform-error (&body body)
+  `(block nil
+     (flet ((transform-error (control &rest arguments)
+              (ecase (defaulted-transform-errors errors)
+                ((:replace)
+                 (return (values #xFFFD index t)))
+                (:ignore
+                 (return (values #xFFFD index t)))
+                (:strict
+                 (error 'unicode-transform-error :unicode unicode :control control :arguments arguments)))))
+       (restart-case
+           ,@body
+         (replace ()
+           :report "Return replacement character U+FFFD."
+           (values #xFFFD index t))))))
 
 
-(defgeneric set-code-point (unicode index code-point)
-  (:method (unicode index code-point)
-    (etypecase unicode
-      (utf-8
-       (cond ((< code-point #x80)
-              (setf (u8ref unicode index) code-point)
-              (1+ index))
-             ((< code-point #x800)
-              (setf (u8ref unicode index)
-                    (logxor #b11000000 (ldb (byte 5 6) code-point)))
-              (setf (u8ref unicode (+ 1 index))
-                    (logxor #b10000000 (ldb (byte 6 0) code-point)))
-              (+ 2 index))
-             ((< code-point #x10000)
-              (setf (u8ref unicode index)
-                    (logxor #b11100000 (ldb (byte 4 12) code-point)))
-              (setf (u8ref unicode (+ 1 index))
-                    (logxor #b10000000 (ldb (byte 6 6) code-point)))
-              (setf (u8ref unicode (+ 2 index))
-                    (logxor #b10000000 (ldb (byte 6 0) code-point)))
-              (+ 3 index))
-             (t
-              (setf (u8ref unicode index)
-                    (logxor #b11110000 (ldb (byte 3 18) code-point)))
-              (setf (u8ref unicode (+ 1 index))
-                    (logxor #b10000000 (ldb (byte 6 12) code-point)))
-              (setf (u8ref unicode (+ 2 index))
-                    (logxor #b10000000 (ldb (byte 6 6) code-point)))
-              (setf (u8ref unicode (+ 3 index))
-                    (logxor #b10000000 (ldb (byte 6 0) code-point)))
-              (+ 4 index))))
-      (utf-16
-       (cond ((<= code-point #xFFFF)
-              (setf (u16ref unicode index) code-point)
-              (1+ index))
-             (t
-              (setf (u16ref unicode index) (+ #xD7C0 (ldb (byte 10 10) code-point)))
-              (setf (u16ref unicode (1+ index)) (+ #xDC00 (ldb (byte 10 0) code-point)))
-              (+ 2 index))))
-      (utf-32
-       (setf (u32ref unicode index) code-point)
-       (1+ index)))))
+(defun code-point-at-utf-8 (unicode index &key errors)
+  (check-type unicode utf-8)
+  (with-transform-error
+    (let ((code-point (u8ref unicode index))
+          (lower #x80)
+          (upper #XBF))
+      (flet ((cbyte ()
+               (unless (< index (unicode-length unicode))
+                 (transform-error "End of string in UTF-8 sequence."))
+               (let ((byte (u8ref unicode index)))
+                 (unless (<= lower byte upper)
+                   (transform-error "Invalid UTF-8 scalar ~X" byte))
+                 (setf code-point (logxor (ash code-point 6)
+                                          (ldb (byte 6 0) byte)))
+                 (setf lower #x80)
+                 (setf upper #xBF)
+                 (incf index))))
+        (incf index)
+        (typecase code-point
+          ((integer #x00 #x7F))
+          ((integer #xC2 #xDF)
+           (setf code-point (ldb (byte 6 0) code-point))
+           (cbyte))
+          ((integer #xE0 #xEF)
+           (setf code-point (ldb (byte 5 0) code-point))
+           (when (= #xE0 code-point)
+             (setf lower #xA0))
+           (when (= #xED code-point)
+             (setf upper #x9F))
+           (cbyte)
+           (cbyte))
+          ((integer #xF0 #xF4)
+           (setf code-point (ldb (byte 4 0) code-point))
+           (when (= #xF0 code-point)
+             (setf lower #x90))
+           (when (= #xED code-point)
+             (setf upper #x8F))
+           (cbyte)
+           (cbyte)
+           (cbyte))
+          (t
+           (transform-error "Invalid UTF-8 scalar ~X" code-point))))
+      (values code-point index))))
+
+
+(defun code-point-before-utf-8 (unicode index &key errors)
+  (check-type unicode utf-8)
+  (if (= 1 index)
+      (code-point-at-utf-8 unicode 0 :errors errors)
+      (loop for prev-index from (max 0 (- index 4)) below index
+            do (multiple-value-bind (code-point next-index replace)
+                   (code-point-at-utf-8 unicode prev-index :errors :replace)
+                 (when (<= index next-index)
+                   (when (and replace (strictp errors))
+                     (multiple-value-setq (code-point next-index replace)
+                       (code-point-at-utf-8 unicode prev-index :errors errors)))
+                   (return (values code-point prev-index replace)))))))
+
+
+(defun code-point-at-utf-16 (unicode index &key errors)
+  (check-type unicode utf-16)
+  (with-transform-error
+    (let ((lead (u16ref unicode index)))
+      (incf index)
+      (cond ((<= #xD800 lead #xDBFF)
+             (unless (< index (unicode-length unicode))
+               (transform-error "End of string in UTF-16 sequence."))
+             (let ((tail (u16ref unicode index)))
+               (unless (<= #xDC00 tail #xDFFF)
+                 (transform-error "Invalid UTF-16 tail ~X" tail))
+               (incf index)
+               (values (+ #x10000
+                          (ash (- lead #xD800) 10)
+                          (- tail #xDC00))
+                       index)))
+            (t
+             (when (<= #xDC00 lead #xDFFF)
+               (transform-error "Lone UTF-16 tail surrogate ~X" lead))
+             (values lead index))))))
+
+
+(defun code-point-before-utf-16 (unicode index &key errors)
+  (check-type unicode utf-16)
+  (let ((prev-index
+          (cond ((= index 1)
+                 0)
+                ((and (<= 2 index)
+                      (<= #xDC00 (u16ref unicode (- index 1)) #xDFFF)
+                      (<= #xD800 (u16ref unicode (- index 2)) #xDBFF))
+                 (- index 2))
+                (t
+                 (1- index)))))
+    (multiple-value-bind (code-point next-index invalid)
+        (code-point-at-utf-16 unicode prev-index :errors errors)
+      (declare (ignore next-index))
+      (values code-point prev-index invalid))))
+
+
+(defun code-point-at-utf-32 (unicode index &key errors)
+  (check-type unicode utf-32)
+  (with-transform-error
+    (let ((code-point (u32ref unicode index)))
+      (incf index)
+      (unless (typep code-point 'unicode-scalar)
+        (transform-error "Surrogate code point in UTF-32 ~X" code-point))
+      (values code-point index))))
+
+
+(defun code-point-before-utf-32 (unicode index &key errors)
+  (code-point-at-utf-32 unicode (1- index) :errors errors))
+
+
+(defun code-point-at (unicode index &key errors)
+  (etypecase unicode
+    (utf-8 (code-point-at-utf-8 unicode index :errors errors))
+    (utf-16 (code-point-at-utf-16 unicode index :errors errors))
+    (utf-32 (code-point-at-utf-32 unicode index :errors errors))))
+
+
+(defun code-point-before (unicode index &key errors)
+  (etypecase unicode
+    (utf-8 (code-point-before-utf-8 unicode index :errors errors))
+    (utf-16 (code-point-before-utf-16 unicode index :errors errors))
+    (utf-32 (code-point-before-utf-32 unicode index :errors errors))))
+
+
+(defun set-code-point (unicode index code-point)
+  (etypecase unicode
+    (utf-8
+     (cond ((< code-point #x80)
+            (setf (u8ref unicode index) code-point)
+            (1+ index))
+           ((< code-point #x800)
+            (setf (u8ref unicode index)
+                  (logxor #b11000000 (ldb (byte 5 6) code-point)))
+            (setf (u8ref unicode (+ 1 index))
+                  (logxor #b10000000 (ldb (byte 6 0) code-point)))
+            (+ 2 index))
+           ((< code-point #x10000)
+            (setf (u8ref unicode index)
+                  (logxor #b11100000 (ldb (byte 4 12) code-point)))
+            (setf (u8ref unicode (+ 1 index))
+                  (logxor #b10000000 (ldb (byte 6 6) code-point)))
+            (setf (u8ref unicode (+ 2 index))
+                  (logxor #b10000000 (ldb (byte 6 0) code-point)))
+            (+ 3 index))
+           (t
+            (setf (u8ref unicode index)
+                  (logxor #b11110000 (ldb (byte 3 18) code-point)))
+            (setf (u8ref unicode (+ 1 index))
+                  (logxor #b10000000 (ldb (byte 6 12) code-point)))
+            (setf (u8ref unicode (+ 2 index))
+                  (logxor #b10000000 (ldb (byte 6 6) code-point)))
+            (setf (u8ref unicode (+ 3 index))
+                  (logxor #b10000000 (ldb (byte 6 0) code-point)))
+            (+ 4 index))))
+    (utf-16
+     (cond ((<= code-point #xFFFF)
+            (setf (u16ref unicode index) code-point)
+            (1+ index))
+           (t
+            (setf (u16ref unicode index) (+ #xD7C0 (ldb (byte 10 10) code-point)))
+            (setf (u16ref unicode (1+ index)) (+ #xDC00 (ldb (byte 10 0) code-point)))
+            (+ 2 index))))
+    (utf-32
+     (setf (u32ref unicode index) code-point)
+     (1+ index))))
 
 (defun next-code-point (unicode index &key errors)
   (multiple-value-bind (code-point index invalid)
-      (code-point unicode index :errors errors)
+      (code-point-at unicode index :errors errors)
     (declare (ignore code-point))
     (values index invalid)))
 
@@ -235,7 +297,7 @@
            with ,invalid
            with ,index fixnum = 0
            while (< ,index (the fixnum (unicode-length ,%unicode)))
-           do (multiple-value-setq (,var ,index ,invalid) (code-point ,%unicode ,index :errors ,%errors))
+           do (multiple-value-setq (,var ,index ,invalid) (code-point-at ,%unicode ,index :errors ,%errors))
            unless (eq :ignore ,invalid)
              do (progn ,@body))))
 

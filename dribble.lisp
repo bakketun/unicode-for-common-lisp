@@ -14,7 +14,7 @@
 
 (utf-32 "hello world…")
 
-(code-point "hello world" 1)
+(code-point-at "hello world" 1)
 
 (code-point-count "hello")
 
@@ -26,7 +26,7 @@
 
 (unicode-string (utf-16 "💩a…💩"))
 
-(code-point "h" 0)
+(code-point-at "h" 0)
 
 (utf-8 "💩a…💩")
 
@@ -68,3 +68,13 @@
 (list #16u(#u+pile_of_poo #u+greek_capital_letter_delta))
 
 #u+GREEK_CAPITAL_LETTER_DELTA
+
+
+(code-point-at (utf-8* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3 :errors :ignore)
+(code-point-before (utf-8* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 4)
+;;(code-point-at (utf-8* "aaa" #xf0 #x90 "bbb") 3)
+(code-point-before (utf-8* "aaa" #xf0 #x90 "bbb") 5 :errors :ignore)
+
+(code-point-at (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
+(code-point-before (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 5)
+(u16ref (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
