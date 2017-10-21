@@ -12,6 +12,7 @@
    :code-point-at
    :code-point-before
    :code-point-count
+   :concatenate-unicode
    :copy-unicode
    :do-code-points
    :make-unicode
@@ -32,6 +33,7 @@
    :unicode-scalar
    :unicode-string
    :unicode-transform-error
+   :unicode-type
    :unicodep
    :utf-8
    :utf-8-code-unit

@@ -92,6 +92,16 @@
 
 (utf-8 (utf-8 #xff) (utf-8 #xff))
 
-(unicode-string (utf-8 (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9)))
+(unicode-string (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9))
+
+
+
+(unicode :replace (utf-8 #xF0 #x9F) "a" (utf-8 #x92 #xA9))
+(unicode (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9))
+
 
 (copy-unicode "hello" :type (utf-16))
+
+(concatenate-unicode (list (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9)))
+(concatenate-unicode (list (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9)) :type 'utf-16)
+(concatenate-unicode (list "A " (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9)))

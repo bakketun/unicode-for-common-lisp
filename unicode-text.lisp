@@ -25,6 +25,12 @@
 (defgeneric utf-32-p (thing) (:method (thing)))
 (deftype utf-32 () '(satisfies utf-32-p))
 
+(defun unicode-type (unicode)
+  (etypecase unicode
+    (utf-8 'utf-8)
+    (utf-16 'utf-16)
+    (utf-32 'utf-32)))
+
 (defun unicodep (object)
   (or (utf-8-p object)
       (utf-16-p object)
@@ -609,37 +615,67 @@
 (defun copy-unicode (data &key type errors)
   (multiple-value-bind (constructor type-name)
       (unicode-constructor (or type *default-unicode-format*))
-    (cond ((listp data)
-           (unless errors
-             (when (member (car data) '(:strict :replace :ignore))
-               (setf errors (pop data)))))
-          (t
-           (setf data (list data))))
-    (let* ((length (loop for elt in data
-                         summing (etypecase elt
-                                   (unicode
-                                    (if (typep elt type-name)
-                                        (unicode-length elt)
-                                        (unicode-length-for type-name elt :errors errors)))
-                                   (integer
-                                    (unless type
-                                      (error "~S is not of type unicode." elt))
-                                    1))))
-           (unicode (funcall constructor length)))
-      (loop with index = 0
-            for elt in data
-            do (etypecase elt
-                 (unicode
-                  (cond ((typep elt type-name)
-                         (unicode-replace unicode elt :start1 index)
-                         (incf index (unicode-length elt)))
-                        (t
-                         (do-code-points (code-point elt :errors errors)
-                           (setf index (set-code-point unicode index code-point))))))
-                 (integer
-                  (setf (unicode-ref unicode index) elt)
-                  (incf index))))
-      unicode)))
+    (etypecase data
+      (unicode
+       (concatenate-unicode (list (funcall constructor 0)
+                                  data)
+                            :type type-name :errors errors))
+      (list
+       (unless errors
+         (when (member (car data) '(:strict :replace :ignore))
+           (setf errors (pop data))))
+       (concatenate-unicode
+        (if type
+            (loop for src in data
+                  collect (etypecase src
+                            (unicode src)
+                            (integer
+                             (let ((new (funcall constructor 1)))
+                               (setf (unicode-ref new 0) src)
+                               new))))
+            data)
+        :type type-name :errors errors)))))
+
+(defun concatenate-unicode-of-same-type (unicode-list)
+  (let ((new (funcall (unicode-constructor (car unicode-list))
+                      (reduce #'+ unicode-list :key #'unicode-length))))
+    (loop with index = 0
+          for src in unicode-list
+          do (unicode-replace new src :start1 index)
+             (incf index (unicode-length src)))
+    new))
+
+(defun concatenate-unicode (unicode &key type errors)
+  (let* ((same-type nil)
+         (src-list (loop while unicode
+                         for group-type = (unicode-type (car unicode))
+                         for group = (loop for elt = (car unicode)
+                                           while (typep elt group-type)
+                                           collect (pop unicode))
+                         for first = t then nil
+                         do (if first
+                                (setf same-type group-type)
+                                (unless (eq group-type same-type)
+                                  (setf same-type nil)))
+                         collect (concatenate-unicode-of-same-type group))))
+    (multiple-value-bind (constructor type-name)
+        (unicode-constructor (or type
+                                 same-type
+                                 *default-unicode-format*))
+      (let* ((length (loop for src in src-list
+                           summing (if (typep src type-name)
+                                       (unicode-length src)
+                                       (unicode-length-for type-name src :errors errors))))
+             (new (funcall constructor length)))
+        (loop with index = 0
+              for src in src-list
+              do (cond ((typep src type-name)
+                        (unicode-replace new src :start1 index)
+                        (incf index (unicode-length src)))
+                       (t
+                        (do-code-points (code-point src :errors errors)
+                          (setf index (set-code-point new index code-point))))))
+        new))))
 
 
 ;; printing unicode readable
