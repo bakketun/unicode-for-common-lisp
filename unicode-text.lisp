@@ -579,23 +579,23 @@
 
 ;; unicode constructors
 
-(defun unicode-constructor (format)
-  (etypecase format
+(defun unicode-constructor (type)
+  (etypecase type
     (string (values #'make-string +string-unicode-type+))
     (utf-8 (values #'make-utf-8 'utf-8))
     (utf-16 (values #'make-utf-16 'utf-16))
     (utf-32 (values #'make-utf-32 'utf-32))
     (symbol
-     (ecase format
+     (ecase type
        (string (values #'make-string +string-unicode-type+))
        (utf-8 (values #'make-utf-8 'utf-8))
        (utf-16 (values #'make-utf-16 'utf-16))
        (utf-32 (values #'make-utf-32 'utf-32))))))
 
-(defvar *default-unicode-format* 'string)
+(defvar *default-unicode-type* 'string)
 
-(defun make-unicode (count &key format)
-  (funcall (unicode-constructor (or format *default-unicode-format*)) count))
+(defun make-unicode (count &key type)
+  (funcall (unicode-constructor (or type *default-unicode-type*)) count))
 
 (defun utf-8 (&rest unicode)
   (copy-unicode unicode :type 'utf-8))
@@ -613,13 +613,13 @@
   (copy-unicode unicode))
 
 (defun copy-unicode (data &key type errors)
-  (multiple-value-bind (constructor type-name)
-      (unicode-constructor (or type *default-unicode-format*))
+  (multiple-value-bind (constructor)
+      (unicode-constructor (or type *default-unicode-type*))
     (etypecase data
       (unicode
        (concatenate-unicode (list (funcall constructor 0)
                                   data)
-                            :type type-name :errors errors))
+                            :type type :errors errors))
       (list
        (unless errors
          (when (member (car data) '(:strict :replace :ignore))
@@ -634,7 +634,7 @@
                                (setf (unicode-ref new 0) src)
                                new))))
             data)
-        :type type-name :errors errors)))))
+        :type type :errors errors)))))
 
 (defun concatenate-unicode-of-same-type (unicode-list)
   (let ((new (funcall (unicode-constructor (car unicode-list))
@@ -661,7 +661,7 @@
     (multiple-value-bind (constructor type-name)
         (unicode-constructor (or type
                                  same-type
-                                 *default-unicode-format*))
+                                 *default-unicode-type*))
       (let* ((length (loop for src in src-list
                            summing (if (typep src type-name)
                                        (unicode-length src)

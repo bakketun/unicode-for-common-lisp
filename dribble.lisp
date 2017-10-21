@@ -84,7 +84,7 @@
 (unicode #\PILE_OF_POO)
 (unicode-string #\PILE_OF_POO)
 
-(let ((*default-unicode-format* 'utf-8))
+(let ((*default-unicode-type* 'utf-8))
   (unicode #U+00ff))
 
 (unicode :replace (utf-8 #xff))

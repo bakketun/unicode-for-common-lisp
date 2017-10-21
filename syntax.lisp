@@ -36,11 +36,11 @@
                                                         (char<= #\a char #\z)))
                                          collect (char-upcase (read-char s t nil t)))
                                    'string)))
-                         :type type))
+                         :type (or type *default-unicode-type*)))
           ((or (eql #\" char)
                (eql #\( char))
            (unread-char char s)
-           (copy-unicode (read s t nil t) :type type))
+           (copy-unicode (read s t nil t) :type (or type *default-unicode-type*)))
           (t
            (error "Invalid unicode syntax: #~@[~A~]~A~A" n c char)))))
 

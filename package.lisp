@@ -6,7 +6,7 @@
 (defpackage #:unicode
   (:use :common-lisp)
   (:export
-   :*default-unicode-format*
+   :*default-unicode-type*
    :+string-unicode-type+
    :code-point
    :code-point-at
