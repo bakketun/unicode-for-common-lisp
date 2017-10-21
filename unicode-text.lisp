@@ -154,13 +154,13 @@
   (if (= 1 index)
       (code-point-at-utf-8 unicode 0 :errors errors)
       (loop for prev-index from (max 0 (- index 4)) below index
-            do (multiple-value-bind (code-point next-index replace)
+            do (multiple-value-bind (code-point next-index invalid)
                    (code-point-at-utf-8 unicode prev-index :errors :replace)
                  (when (<= index next-index)
-                   (when (and replace (strictp errors))
-                     (multiple-value-setq (code-point next-index replace)
+                   (when (and invalid (strictp errors))
+                     (multiple-value-setq (code-point next-index invalid)
                        (code-point-at-utf-8 unicode prev-index :errors errors)))
-                   (return (values code-point prev-index replace)))))))
+                   (return (values code-point prev-index invalid)))))))
 
 
 (defun code-point-at-utf-16 (unicode index &key errors)
@@ -389,7 +389,21 @@
 
   (defmethod (setf u8ref) (code-unit (unicode string) index)
     (setf (char unicode index) (code-char code-unit))
-    code-unit))
+    code-unit)
+
+  ;; Character as utf-8
+
+  (defmethod utf-8-p ((character character)) t)
+
+  (defmethod unicode-length ((character character))
+    1)
+
+  (defmethod u8ref ((character character) index)
+    (assert (zerop index) (index)
+            "u8ref: Invalid index ~A for character ~S as unicode. Must be 0."
+            index
+            character)
+    (char-code character)))
 
 
 ;; String as utf-16
@@ -407,7 +421,21 @@
 
   (defmethod (setf u16ref) (code-unit (unicode string) index)
     (setf (char unicode index) (code-char code-unit))
-    code-unit))
+    code-unit)
+
+  ;; Character as utf-16
+
+  (defmethod utf-16-p ((character character)) t)
+
+  (defmethod unicode-length ((character character))
+    1)
+
+  (defmethod u16ref ((character character) index)
+    (assert (zerop index) (index)
+            "u16ref: Invalid index ~A for character ~S as unicode. Must be 0."
+            index
+            character)
+    (char-code character)))
 
 
 ;; String as utf-32
@@ -425,8 +453,21 @@
 
   (defmethod (setf u32ref) (code-unit (unicode string) index)
     (setf (char unicode index) (code-char code-unit))
-    code-unit))
+    code-unit)
 
+  ;; Character as utf-32
+
+  (defmethod utf-32-p ((character character)) t)
+
+  (defmethod unicode-length ((character character))
+    1)
+
+  (defmethod u32ref ((character character) index)
+    (assert (zerop index) (index)
+            "u32ref: Invalid index ~A for character ~S as unicode. Must be 0."
+            index
+            character)
+    (char-code character)))
 
 ;; utf-8 unicode
 
@@ -560,8 +601,6 @@
                                     0)
                                    (unicode
                                     (unicode-length-for format elt :errors errors))
-                                   (character
-                                    (unicode-length-for format (string elt) :errors errors))
                                    (integer
                                     1))))
            (unicode (funcall constructor length)))
@@ -573,9 +612,6 @@
                   (setf errors elt))
                  (unicode
                   (do-code-points (code-point elt :errors errors)
-                    (setf index (set-code-point unicode index code-point))))
-                 (character
-                  (do-code-points (code-point (string elt) :errors errors)
                     (setf index (set-code-point unicode index code-point))))
                  (integer
                   (setf (unicode-ref unicode index) elt)

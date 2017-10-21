@@ -78,3 +78,8 @@
 (code-point-at (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
 (code-point-before (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 5)
 (u16ref (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
+
+
+(utf-8 #\PILE_OF_POO)
+(unicode #\PILE_OF_POO)
+(unicode-string #\PILE_OF_POO)
