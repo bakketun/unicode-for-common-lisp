@@ -48,20 +48,20 @@
 
 (print-hello)
 
-(code-point-count (utf-8* #xff #x41))
-(code-point-count (utf-8* #xff #x41) :errors :replace)
-(code-point-count (utf-8* #xff #x41) :errors :ignore)
+(code-point-count (utf-8 #xff #x41))
+(code-point-count (utf-8 #xff #x41) :errors :replace)
+(code-point-count (utf-8 #xff #x41) :errors :ignore)
 
 (let ((unicode::*transform-errors-default* :ignore))
-  (utf-16 (utf-8* #xff #x41)))
+  (utf-16 (utf-8 #xff #x41)))
 
-(utf-16* :ignore (utf-8* #xff #x41))
+(utf-16 :ignore (utf-8 #xff #x41))
 
-(code-point-count (utf-8* #xff #x41) :errors :replace)
+(code-point-count (utf-8 #xff #x41) :errors :replace)
 
-(utf-16* :replace (utf-8* #xff #x41) :ignore (utf-8* #xff #x41))
+(utf-16 :replace (utf-8 #xff #x41) (utf-8 #xff #x41))
 
-(unicode* "string" #x42 "string" #U+16222)
+(unicode "string" #U+0042 "string" #U+16222)
 
 (utf-8 (utf-8 "hello"))
 
@@ -70,16 +70,28 @@
 #u+GREEK_CAPITAL_LETTER_DELTA
 
 
-(code-point-at (utf-8* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3 :errors :ignore)
-(code-point-before (utf-8* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 4)
+(code-point-at (utf-8 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3 :errors :ignore)
+(code-point-before (utf-8 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 4)
 ;;(code-point-at (utf-8* "aaa" #xf0 #x90 "bbb") 3)
-(code-point-before (utf-8* "aaa" #xf0 #x90 "bbb") 5 :errors :ignore)
+(code-point-before (utf-8 "aaa" #xf0 #x90 "bbb") 5 :errors :ignore)
 
-(code-point-at (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
-(code-point-before (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 5)
-(u16ref (utf-16* #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
+(code-point-at (utf-16 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
+(code-point-before (utf-16 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 5)
+(u16ref (utf-16 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
 
 
 (utf-8 #\PILE_OF_POO)
 (unicode #\PILE_OF_POO)
 (unicode-string #\PILE_OF_POO)
+
+(let ((*default-unicode-format* 'utf-8))
+  (unicode #U+00ff))
+
+(unicode :replace (utf-8 #xff))
+(utf-8 :ignore (utf-8 #xff))
+
+(utf-8 (utf-8 #xff) (utf-8 #xff))
+
+(unicode-string (utf-8 (utf-8 #xF0 #x9F) (utf-8 #x92 #xA9)))
+
+(copy-unicode "hello" :type (utf-16))

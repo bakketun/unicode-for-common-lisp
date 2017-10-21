@@ -46,6 +46,7 @@
 (defgeneric (setf u16ref) (code-unit unicode index))
 (defgeneric (setf u32ref) (code-unit unicode index))
 
+
 (defun unicode-ref (unicode index)
   (etypecase unicode
     (utf-8 (u8ref unicode index))
@@ -58,6 +59,35 @@
     (utf-16 (setf (u16ref unicode index) code-unit))
     (utf-32 (setf (u32ref unicode index) code-unit))))
 
+(defgeneric utf-8-replace (unicode1 unicode2 &key start1 end1 start2 end2)
+  (:method (unicode1 unicode2 &key start1 end1 start2 end2)
+    (loop for index1 from (or start1 0) below (or end1 (unicode-length unicode1))
+          for index2 from (or start2 0) below (or end2 (unicode-length unicode2))
+          do (setf (u8ref unicode1 index1) (u8ref unicode2 index2)))))
+
+(defgeneric utf-16-replace (unicode1 unicode2 &key start1 end1 start2 end2)
+  (:method (unicode1 unicode2 &key start1 end1 start2 end2)
+    (loop for index1 from (or start1 0) below (or end1 (unicode-length unicode1))
+          for index2 from (or start2 0) below (or end2 (unicode-length unicode2))
+          do (setf (u16ref unicode1 index1) (u16ref unicode2 index2)))))
+
+(defgeneric utf-32-replace (unicode1 unicode2 &key start1 end1 start2 end2)
+  (:method (unicode1 unicode2 &key start1 end1 start2 end2)
+    (loop for index1 from (or start1 0) below (or end1 (unicode-length unicode1))
+          for index2 from (or start2 0) below (or end2 (unicode-length unicode2))
+          do (setf (u32ref unicode1 index1) (u32ref unicode2 index2)))))
+
+(defun unicode-replace (unicode1 unicode2 &key start1 end1 start2 end2)
+  (etypecase unicode1
+    (utf-8
+     (check-type unicode2 utf-8)
+     (utf-8-replace unicode1 unicode2 :start1 start1 :end1 end1 :start2 start2 :end2 end2))
+    (utf-16
+     (check-type unicode2 utf-16)
+     (utf-16-replace unicode1 unicode2 :start1 start1 :end1 end1 :start2 start2 :end2 end2))
+    (utf-32
+     (check-type unicode2 utf-32)
+     (utf-32-replace unicode1 unicode2 :start1 start1 :end1 end1 :start2 start2 :end2 end2))))
 
 ;; Code point interface
 
@@ -494,7 +524,6 @@
 (defmethod (setf u8ref) (code-unit (unicode %utf-8) index)
   (setf (aref (%utf-8-data unicode) index) code-unit))
 
-
 ;; utf-16 unicode
 
 (defstruct %utf-16
@@ -562,75 +591,55 @@
 (defun make-unicode (count &key format)
   (funcall (unicode-constructor (or format *default-unicode-format*)) count))
 
-(defun unicode (thing)
-  (if (unicodep thing)
-      thing
-      (unicode* thing)))
+(defun utf-8 (&rest unicode)
+  (copy-unicode unicode :type 'utf-8))
 
-(defun utf-8 (thing)
-  (if (utf-8-p thing)
-      thing
-      (utf-8* thing)))
+(defun utf-16 (&rest unicode)
+  (copy-unicode unicode :type 'utf-16))
 
-(defun utf-16 (thing)
-  (if (utf-16-p thing)
-      thing
-      (utf-16* thing)))
+(defun utf-32 (&rest unicode)
+  (copy-unicode unicode :type 'utf-32))
 
-(defun utf-32 (thing)
-  (if (utf-32-p thing)
-      thing
-      (utf-32* thing)))
+(defun unicode-string (&rest unicode)
+  (copy-unicode unicode :type 'string))
 
-(defun unicode-string (thing)
-  (if (stringp thing)
-      thing
-      (unicode-string* thing)))
+(defun unicode (&rest unicode)
+  (copy-unicode unicode))
 
-(defun unicode* (&rest data)
-  (unicode** data))
-
-(defun unicode** (data &optional format)
-  (multiple-value-bind (constructor format)
-      (unicode-constructor (or format *default-unicode-format*))
-    (unless (listp data)
-      (setf data (list data)))
-    (let* ((length (loop with errors = nil
-                         for elt in data
+(defun copy-unicode (data &key type errors)
+  (multiple-value-bind (constructor type-name)
+      (unicode-constructor (or type *default-unicode-format*))
+    (cond ((listp data)
+           (unless errors
+             (when (member (car data) '(:strict :replace :ignore))
+               (setf errors (pop data)))))
+          (t
+           (setf data (list data))))
+    (let* ((length (loop for elt in data
                          summing (etypecase elt
-                                   (keyword
-                                    (setf errors elt)
-                                    0)
                                    (unicode
-                                    (unicode-length-for format elt :errors errors))
+                                    (if (typep elt type-name)
+                                        (unicode-length elt)
+                                        (unicode-length-for type-name elt :errors errors)))
                                    (integer
+                                    (unless type
+                                      (error "~S is not of type unicode." elt))
                                     1))))
            (unicode (funcall constructor length)))
-      (loop with errors = nil
-            with index = 0
+      (loop with index = 0
             for elt in data
             do (etypecase elt
-                 (keyword
-                  (setf errors elt))
                  (unicode
-                  (do-code-points (code-point elt :errors errors)
-                    (setf index (set-code-point unicode index code-point))))
+                  (cond ((typep elt type-name)
+                         (unicode-replace unicode elt :start1 index)
+                         (incf index (unicode-length elt)))
+                        (t
+                         (do-code-points (code-point elt :errors errors)
+                           (setf index (set-code-point unicode index code-point))))))
                  (integer
                   (setf (unicode-ref unicode index) elt)
                   (incf index))))
       unicode)))
-
-(defun utf-8* (&rest data)
-  (unicode** data 'utf-8))
-
-(defun utf-16* (&rest data)
-  (unicode** data 'utf-16))
-
-(defun utf-32* (&rest data)
-  (unicode** data 'utf-32))
-
-(defun unicode-string* (&rest data)
-  (unicode** data 'string))
 
 
 ;; printing unicode readable

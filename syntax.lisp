@@ -15,32 +15,32 @@
 
 
 (defun unicode-reader (s c n)
-  (let ((format (case n
-                  (8 'utf-8)
-                  (16 'utf-16)
-                  (32 'utf-32)
-                  (0 'string)
-                  ((nil) nil)
-                  (otherwise
-                   (error "Invalid unicode format: ~S" n))))
+  (let ((type (case n
+                (8 'utf-8)
+                (16 'utf-16)
+                (32 'utf-32)
+                (0 'string)
+                ((nil) nil)
+                (otherwise
+                 (error "Invalid numeric unicode type designator: ~S" n))))
         (char (read-char s t nil t)))
     (cond ((eql #\+ char)
-           (unicode** (utf-32
-                       (find-code-point
-                        (coerce (loop for char = (peek-char nil s nil nil t)
-                                      while (and char
-                                                 (or (char= #\- char)
-                                                     (char= #\_ char)
-                                                     (char<= #\0 char #\9)
-                                                     (char<= #\A char #\Z)
-                                                     (char<= #\a char #\z)))
-                                      collect (char-upcase (read-char s t nil t)))
-                                'string)))
-                      format))
+           (copy-unicode (utf-32
+                          (find-code-point
+                           (coerce (loop for char = (peek-char nil s nil nil t)
+                                         while (and char
+                                                    (or (char= #\- char)
+                                                        (char= #\_ char)
+                                                        (char<= #\0 char #\9)
+                                                        (char<= #\A char #\Z)
+                                                        (char<= #\a char #\z)))
+                                         collect (char-upcase (read-char s t nil t)))
+                                   'string)))
+                         :type type))
           ((or (eql #\" char)
                (eql #\( char))
            (unread-char char s)
-           (unicode** (read s t nil t) format))
+           (copy-unicode (read s t nil t) :type type))
           (t
            (error "Invalid unicode syntax: #~@[~A~]~A~A" n c char)))))
 
