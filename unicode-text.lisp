@@ -289,16 +289,18 @@
 (defmacro do-code-points ((var unicode &key errors) &body body)
   (let ((%unicode (gensym "UNICODE"))
         (%errors (gensym "ERRORS"))
-        (index (gensym "INDEX"))
+        (%index (gensym "INDEX"))
+        (%should-ignore (gensym "SHOULD-IGNORE"))
         (invalid (gensym "INVALID")))
     `(loop with ,var of-type code-point = 0
            with ,%unicode = ,unicode
            with ,%errors = ,errors
+           with ,%should-ignore = (eq :ignore (defaulted-transform-errors ,errors))
            with ,invalid
-           with ,index fixnum = 0
-           while (< ,index (the fixnum (unicode-length ,%unicode)))
-           do (multiple-value-setq (,var ,index ,invalid) (code-point-at ,%unicode ,index :errors ,%errors))
-           unless (eq :ignore ,invalid)
+           with ,%index fixnum = 0
+           while (< ,%index (the fixnum (unicode-length ,%unicode)))
+           do (multiple-value-setq (,var ,%index ,invalid) (code-point-at ,%unicode ,%index :errors ,%errors))
+           unless (and ,%should-ignore ,invalid)
              do (progn ,@body))))
 
 (defun map-code-points (function unicode &key errors)
