@@ -15,6 +15,7 @@
    :concatenate-unicode
    :copy-unicode
    :do-code-points
+   :enable-unicode-syntax
    :make-unicode
    :make-utf-8
    :make-utf-16

@@ -3,6 +3,7 @@
 
 (in-package #:unicode-user)
 
+#.(enable-unicode-syntax)
 
 #16U+FFFF
 (utf-16 (utf-32 #xFFFF))
@@ -65,19 +66,19 @@
 
 (utf-8 (utf-8 "hello"))
 
-(list #16u(#u+pile_of_poo #u+greek_capital_letter_delta))
+(list #16u({pile of poo} {greek_capital_letter_delta}))
 
-#u+GREEK_CAPITAL_LETTER_DELTA
+#u{GREEK_CAPITAL_LETTER_DELTA}
 
 
-(code-point-at (utf-8 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3 :errors :ignore)
-(code-point-before (utf-8 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 4)
-;;(code-point-at (utf-8* "aaa" #xf0 #x90 "bbb") 3)
+(code-point-at (utf-8 #u{PILE OF POO} "a" #u{PILE OF POO} "a") 3 :errors :ignore)
+(code-point-before (utf-8 #u{PILE OF POO} "a" #u{PILE OF POO} "a") 4)
+;;(code-point-at (utf-8 "aaa" #xf0 #x90 "bbb") 3)
 (code-point-before (utf-8 "aaa" #xf0 #x90 "bbb") 5 :errors :ignore)
 
-(code-point-at (utf-16 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
-(code-point-before (utf-16 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 5)
-(u16ref (utf-16 #u+PILE-OF-POO "a" #u+PILE-OF-POO "a") 3)
+(code-point-at (utf-16 #u{PILE OF POO} "a" #u{PILE OF POO} "a") 3)
+(code-point-before (utf-16 #u{PILE OF POO} "a" #u{PILE OF POO} "a") 5)
+(u16ref (utf-16 #u{PILE OF POO} "a" #u{PILE OF POO} "a") 3)
 
 
 (utf-8 #\PILE_OF_POO)

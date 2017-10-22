@@ -345,6 +345,14 @@
   (do-code-points (code-point unicode :errors errors)
     (funcall function code-point)))
 
+(defun well-formed-p (unicode)
+  (handler-case
+      (progn
+        (do-code-points (v unicode :errors :strict))
+        t)
+    (unicode-transform-error ()
+      nil)))
+
 (defun code-point-utf-8-length (code-point)
   (cond ((< code-point #x80)
          1)
@@ -516,8 +524,11 @@
   (declare (ignore environment))
   `(make-%utf-8 :data ,(%utf-8-data unicode)))
 
-(defun make-utf-8 (count)
-  (make-%utf-8 :data (make-array count :element-type 'utf-8-code-unit)))
+(defun make-utf-8 (count &key (initial-contents nil initial-contents-p))
+  (make-%utf-8 :data (if initial-contents-p
+                          (make-array count :element-type 'utf-8-code-unit
+                                            :initial-contents initial-contents)
+                          (make-array count :element-type 'utf-8-code-unit))))
 
 (defmethod utf-8-p ((unicode %utf-8)) t)
 
@@ -539,8 +550,11 @@
   (declare (ignore environment))
   `(make-%utf-16 :data ,(%utf-16-data unicode)))
 
-(defun make-utf-16 (count)
-  (make-%utf-16 :data (make-array count :element-type 'utf-16-code-unit)))
+(defun make-utf-16 (count &key (initial-contents nil initial-contents-p))
+  (make-%utf-16 :data (if initial-contents-p
+                          (make-array count :element-type 'utf-16-code-unit
+                                            :initial-contents initial-contents)
+                          (make-array count :element-type 'utf-16-code-unit))))
 
 (defmethod utf-16-p ((unicode %utf-16)) t)
 
@@ -563,8 +577,11 @@
   (declare (ignore environment))
   `(make-%utf-32 :data ,(%utf-32-data unicode)))
 
-(defun make-utf-32 (count)
-  (make-%utf-32 :data (make-array count :element-type 'utf-32-code-unit)))
+(defun make-utf-32 (count &key (initial-contents nil initial-contents-p))
+  (make-%utf-32 :data (if initial-contents-p
+                          (make-array count :element-type 'utf-32-code-unit
+                                            :initial-contents initial-contents)
+                          (make-array count :element-type 'utf-32-code-unit))))
 
 (defmethod utf-32-p ((unicode %utf-32)) t)
 
@@ -594,8 +611,9 @@
 
 (defvar *default-unicode-type* 'string)
 
-(defun make-unicode (count &key type)
-  (funcall (unicode-constructor (or type *default-unicode-type*)) count))
+(defun make-unicode (count &key type initial-contents)
+  (funcall (unicode-constructor (or type *default-unicode-type*))
+           count :initial-contents initial-contents))
 
 (defun utf-8 (&rest unicode)
   (copy-unicode unicode :type 'utf-8))
@@ -678,25 +696,19 @@
         new))))
 
 
-;; printing unicode readable
+;; printing unicode unreadable
 
-
-(defun print-unicode-code-units (stream type code-units digits)
-  (format stream "#~Au(" (case type
-                           (utf-8 8)
-                           (utf-16 16)
-                           (utf-32 32)))
-  (loop for byte across code-units
-        for first = t then nil
-        do (unless first (princ " " stream))
-        do (format stream "#x~v,'0X" digits byte))
-  (princ ")" stream))
+(defun print-unicode-code-units (stream unicode type code-units digits)
+  (print-unreadable-object (unicode stream)
+    (princ type stream)
+    (loop for byte across code-units
+          do (format stream " ~v,'0X" digits byte))))
 
 (defmethod print-object ((unicode %utf-8) stream)
-  (print-unicode-code-units stream 'utf-8 (%utf-8-data unicode) 2))
+  (print-unicode-code-units stream unicode 'utf-8 (%utf-8-data unicode) 2))
 
 (defmethod print-object ((unicode %utf-16) stream)
-  (print-unicode-code-units stream 'utf-16 (%utf-16-data unicode) 4))
+  (print-unicode-code-units stream unicode 'utf-16 (%utf-16-data unicode) 4))
 
 (defmethod print-object ((unicode %utf-32) stream)
-  (print-unicode-code-units stream 'utf-32 (%utf-32-data unicode) 4))
+  (print-unicode-code-units stream unicode 'utf-32 (%utf-32-data unicode) 4))

@@ -7,7 +7,8 @@
   :serial t
   :components ((:file "package")
                (:file "unicode-text")
-               (:file "syntax")))
+               (:file "syntax")
+               (:file "test-syntax")))
 
 
 
