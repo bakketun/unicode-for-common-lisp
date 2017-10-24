@@ -5,6 +5,9 @@
 
 #.(enable-unicode-syntax)
 
+(list #u"hei")
+(copy-unicode "hei")
+
 #16U+FFFF
 (utf-16 #32u<FFFF>)
 

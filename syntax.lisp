@@ -1,6 +1,8 @@
 (in-package #:unicode)
 
+
 (defparameter *unicode-syntax-readtable* (copy-readtable nil))
+
 
 (defvar *unicode-syntax-current-type* nil)
 
@@ -25,6 +27,7 @@
     (check-type code-point code-point)
     (code-point code-point :type *unicode-syntax-current-type*)))
 
+
 (set-macro-character #\U 'hex-code-point-reader t *unicode-syntax-readtable*)
 (set-macro-character #\u 'hex-code-point-reader t *unicode-syntax-readtable*)
 
@@ -35,6 +38,7 @@
       (error "No character named ~S." name))
     (char-code char)))
 
+
 (defun named-code-point-reader (stream char)
   (declare (ignore char))
   (code-point
@@ -44,6 +48,7 @@
                   collect next-char)
             'string))
    :type *unicode-syntax-current-type*))
+
 
 (set-macro-character #\{ 'named-code-point-reader nil *unicode-syntax-readtable*)
 
