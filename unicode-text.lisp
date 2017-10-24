@@ -52,7 +52,6 @@
 (defgeneric (setf u16ref) (code-unit unicode index))
 (defgeneric (setf u32ref) (code-unit unicode index))
 
-
 (defun unicode-ref (unicode index)
   (etypecase unicode
     (utf-8 (u8ref unicode index))
@@ -94,6 +93,12 @@
     (utf-32
      (check-type unicode2 utf-32)
      (utf-32-replace unicode1 unicode2 :start1 start1 :end1 end1 :start2 start2 :end2 end2))))
+
+(defgeneric clone-unicode (unicode)
+  (:method (unicode)
+    (let ((new (funcall (unicode-constructor unicode) (unicode-length unicode))))
+      (unicode-replace new unicode)
+      new)))
 
 ;; Code point interface
 
@@ -265,7 +270,6 @@
     (utf-16 (code-point-before-utf-16 unicode index :errors errors))
     (utf-32 (code-point-before-utf-32 unicode index :errors errors))))
 
-
 (defun set-code-point (unicode index code-point)
   (etypecase unicode
     (utf-8
@@ -404,6 +408,9 @@
 
 ;; Strings as unicode text
 
+(defmethod clone-unicode ((string string))
+  (copy-seq string))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   #+force-utf-8-strings (pushnew :utf-8-strings *features*)
   #+force-utf-16-strings (pushnew :utf-16-strings *features*)
@@ -524,11 +531,12 @@
   (declare (ignore environment))
   `(make-%utf-8 :data ,(%utf-8-data unicode)))
 
-(defun make-utf-8 (count &key (initial-contents nil initial-contents-p))
+(defun make-utf-8 (count &key (initial-contents nil initial-contents-p) initial-element)
   (make-%utf-8 :data (if initial-contents-p
                           (make-array count :element-type 'utf-8-code-unit
                                             :initial-contents initial-contents)
-                          (make-array count :element-type 'utf-8-code-unit))))
+                          (make-array count :element-type 'utf-8-code-unit
+                                            :initial-element (or initial-element 0)))))
 
 (defmethod utf-8-p ((unicode %utf-8)) t)
 
@@ -550,11 +558,12 @@
   (declare (ignore environment))
   `(make-%utf-16 :data ,(%utf-16-data unicode)))
 
-(defun make-utf-16 (count &key (initial-contents nil initial-contents-p))
+(defun make-utf-16 (count &key (initial-contents nil initial-contents-p) initial-element)
   (make-%utf-16 :data (if initial-contents-p
                           (make-array count :element-type 'utf-16-code-unit
                                             :initial-contents initial-contents)
-                          (make-array count :element-type 'utf-16-code-unit))))
+                          (make-array count :element-type 'utf-16-code-unit
+                                            :initial-element (or initial-element 0)))))
 
 (defmethod utf-16-p ((unicode %utf-16)) t)
 
@@ -577,11 +586,12 @@
   (declare (ignore environment))
   `(make-%utf-32 :data ,(%utf-32-data unicode)))
 
-(defun make-utf-32 (count &key (initial-contents nil initial-contents-p))
+(defun make-utf-32 (count &key (initial-contents nil initial-contents-p) initial-element)
   (make-%utf-32 :data (if initial-contents-p
                           (make-array count :element-type 'utf-32-code-unit
                                             :initial-contents initial-contents)
-                          (make-array count :element-type 'utf-32-code-unit))))
+                          (make-array count :element-type 'utf-32-code-unit
+                                            :initial-element (or initial-element 0)))))
 
 (defmethod utf-32-p ((unicode %utf-32)) t)
 
@@ -611,48 +621,71 @@
 
 (defvar *default-unicode-type* 'string)
 
-(defun make-unicode (count &key type initial-contents)
-  (funcall (unicode-constructor (or type *default-unicode-type*))
-           count :initial-contents initial-contents))
+(defun make-unicode (count &key type
+                             (initial-contents nil initial-contents-p)
+                             (initial-element nil initial-element-p))
+  (cond ((and initial-element-p initial-contents-p)
+         (error "Can't specify both :INITIAL-ELEMENT and :INITIAL-CONTENTS"))
+        (initial-element-p
+         (funcall (unicode-constructor (or type *default-unicode-type*))
+                  count
+                  :initial-element initial-element))
+        (initial-contents-p
+         (funcall (unicode-constructor (or type *default-unicode-type*))
+                  (or count (length initial-contents))
+                  :initial-contents initial-contents))
+        (t
+         (funcall (unicode-constructor (or type *default-unicode-type*)) count))))
 
-(defun utf-8 (&rest unicode)
-  (copy-unicode unicode :type 'utf-8))
+(defun code-point (code-point &key type)
+  (let* ((type (or type *default-unicode-type*))
+         (unicode (make-unicode (code-point-length type code-point)
+                                :type type)))
+    (set-code-point unicode 0 code-point)
+    unicode))
 
-(defun utf-16 (&rest unicode)
-  (copy-unicode unicode :type 'utf-16))
+(defun unicode (unicode &key type errors)
+  (cond ((or (not type)
+             (typep unicode type))
+         (check-type unicode unicode)
+         unicode)
+        (t
+         (copy-unicode unicode :type type :errors errors))))
 
-(defun utf-32 (&rest unicode)
-  (copy-unicode unicode :type 'utf-32))
+(defun utf-8 (unicode &key errors)
+  (unicode unicode :errors errors :type 'utf-8))
 
-(defun unicode-string (&rest unicode)
-  (copy-unicode unicode :type 'string))
+(defun utf-16 (unicode &key errors)
+  (unicode unicode :errors errors :type 'utf-16))
 
-(defun unicode (&rest unicode)
-  (copy-unicode unicode))
+(defun utf-32 (unicode &key errors)
+  (unicode unicode :errors errors :type 'utf-32))
 
-(defun copy-unicode (data &key type errors)
-  (multiple-value-bind (constructor)
-      (unicode-constructor (or type *default-unicode-type*))
-    (etypecase data
-      (unicode
-       (concatenate-unicode (list (funcall constructor 0)
-                                  data)
-                            :type type :errors errors))
-      (list
-       (unless errors
-         (when (member (car data) '(:strict :replace :ignore))
-           (setf errors (pop data))))
-       (concatenate-unicode
-        (if type
-            (loop for src in data
-                  collect (etypecase src
-                            (unicode src)
-                            (integer
-                             (let ((new (funcall constructor 1)))
-                               (setf (unicode-ref new 0) src)
-                               new))))
-            data)
-        :type type :errors errors)))))
+(defun unicode-string (unicode &key errors)
+  (unicode unicode :errors errors :type 'string))
+
+(defun copy-utf-8 (unicode &key errors)
+  (copy-unicode unicode :type 'utf-8 :errors errors))
+
+(defun copy-utf-16 (unicode &key errors)
+  (copy-unicode unicode :type 'utf-16 :errors errors))
+
+(defun copy-utf-32 (unicode &key errors)
+  (copy-unicode unicode :type 'utf-32 :errors errors))
+
+(defun copy-unicode-string (unicode &key errors)
+  (copy-unicode unicode :type 'string :errors errors))
+
+(defun copy-unicode (unicode &key type errors)
+  (if (or (not type)
+          (typep unicode type))
+      (clone-unicode unicode)
+      (let ((new (make-unicode (unicode-length-for type unicode :errors errors)
+                               :type type))
+            (index 0))
+        (do-code-points (code-point unicode :errors errors)
+          (setf index (set-code-point new index code-point)))
+        new)))
 
 (defun concatenate-unicode-of-same-type (unicode-list)
   (let ((new (funcall (unicode-constructor (car unicode-list))
@@ -663,37 +696,46 @@
              (incf index (unicode-length src)))
     new))
 
-(defun concatenate-unicode (unicode &key type errors)
-  (let* ((same-type nil)
-         (src-list (loop while unicode
-                         for group-type = (unicode-type (car unicode))
-                         for group = (loop for elt = (car unicode)
-                                           while (typep elt group-type)
-                                           collect (pop unicode))
-                         for first = t then nil
-                         do (if first
-                                (setf same-type group-type)
-                                (unless (eq group-type same-type)
-                                  (setf same-type nil)))
-                         collect (concatenate-unicode-of-same-type group))))
-    (multiple-value-bind (constructor type-name)
-        (unicode-constructor (or type
-                                 same-type
-                                 *default-unicode-type*))
-      (let* ((length (loop for src in src-list
-                           summing (if (typep src type-name)
-                                       (unicode-length src)
-                                       (unicode-length-for type-name src :errors errors))))
-             (new (funcall constructor length)))
-        (loop with index = 0
-              for src in src-list
-              do (cond ((typep src type-name)
-                        (unicode-replace new src :start1 index)
-                        (incf index (unicode-length src)))
-                       (t
-                        (do-code-points (code-point src :errors errors)
-                          (setf index (set-code-point new index code-point))))))
-        new))))
+(defun concatenate-unicode (list &key type errors copy)
+  (cond ((null list)
+         (make-unicode 0 :type type))
+        ((null (cdr list))
+         (if (and (not copy)
+                  (or (null type)
+                      (typep (car list) type)))
+             (car list)
+             (copy-unicode (car list) :type type :errors errors)))
+        (t
+         (let* ((same-type nil)
+                (src-list (loop while list
+                                for group-type = (unicode-type (car list))
+                                for group = (loop for elt = (car list)
+                                                  while (typep elt group-type)
+                                                  collect (pop list))
+                                for first = t then nil
+                                do (if first
+                                       (setf same-type group-type)
+                                       (unless (eq group-type same-type)
+                                         (setf same-type nil)))
+                                collect (concatenate-unicode-of-same-type group))))
+           (multiple-value-bind (constructor type-name)
+               (unicode-constructor (or type
+                                        (when same-type (car src-list))
+                                        *default-unicode-type*))
+             (let* ((length (loop for src in src-list
+                                  summing (if (typep src type-name)
+                                              (unicode-length src)
+                                              (unicode-length-for type-name src :errors errors))))
+                    (new (funcall constructor length)))
+               (loop with index = 0
+                     for src in src-list
+                     do (cond ((typep src type-name)
+                               (unicode-replace new src :start1 index)
+                               (incf index (unicode-length src)))
+                              (t
+                               (do-code-points (code-point src :errors errors)
+                                 (setf index (set-code-point new index code-point))))))
+               new))))))
 
 
 ;; printing unicode unreadable

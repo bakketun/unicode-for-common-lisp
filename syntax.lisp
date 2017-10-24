@@ -23,7 +23,7 @@
                  (char= #\+ (char hex 0)))
             () "Invalid Unicode syntax: ~A~A" char hex)
     (check-type code-point code-point)
-    (utf-32 code-point)))
+    (code-point code-point :type *unicode-syntax-current-type*)))
 
 (set-macro-character #\U 'hex-code-point-reader t *unicode-syntax-readtable*)
 (set-macro-character #\u 'hex-code-point-reader t *unicode-syntax-readtable*)
@@ -37,12 +37,13 @@
 
 (defun named-code-point-reader (stream char)
   (declare (ignore char))
-  (utf-32
+  (code-point
    (find-code-point
     (coerce (loop for next-char = (read-char stream t nil t)
                   until (char= #\} next-char)
                   collect next-char)
-            'string))))
+            'string))
+   :type *unicode-syntax-current-type*))
 
 (set-macro-character #\{ 'named-code-point-reader nil *unicode-syntax-readtable*)
 
@@ -74,18 +75,18 @@
       (#\(
        (read-char stream t nil t)
        (let ((*readtable* *unicode-syntax-readtable*))
-         (copy-unicode (read-delimited-list #\) stream t) :type type)))
+         (concatenate-unicode (read-delimited-list #\) stream t) :type type)))
       ((#\+)
-       (copy-unicode (hex-code-point-reader stream char) :type type))
+       (hex-code-point-reader stream char))
       ((#\{)
        (read-char stream t nil t)
-       (copy-unicode (named-code-point-reader stream next-char) :type type))
+       (named-code-point-reader stream next-char))
       ((#\<)
        (read-char stream t nil t)
        (let ((*readtable* *unicode-syntax-readtable*))
-         (copy-unicode (code-units-reader stream next-char) :type type)))
+         (code-units-reader stream next-char)))
       ((#\")
-       (copy-unicode (read stream t nil t) :type type))
+       (unicode (read stream t nil t) :type type))
       (otherwise
        (error "Invalid Unicode syntax: #~@[~A~]~A~A" n char next-char)))))
 
