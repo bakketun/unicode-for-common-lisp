@@ -37,6 +37,12 @@
 (deftype unicode () '(satisfies unicodep))
 
 
+(defconstant +string-unicode-type+
+  #+string-is-utf-8 'utf-8
+  #+string-is-utf-16 'utf-16
+  #+string-is-utf-32 'utf-32)
+
+
 (defun unicode-type (unicode)
   ;; Is it better to return NIL if argument is not of type unicode?
   (case unicode
@@ -515,143 +521,102 @@
       (make-string count :initial-element (code-char (or initial-element 0)))))
 
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  #+force-utf-8-strings (pushnew :utf-8-strings *features*)
-  #+force-utf-16-strings (pushnew :utf-16-strings *features*)
-  #+force-utf-32-strings (pushnew :utf-32-strings *features*)
+;; String as unicode
 
-  #-(or force-utf-8-strings
-        force-utf-16-strings
-        force-utf-32-strings)
-  (cond ((<= 1114112 char-code-limit)
-         (pushnew :utf-32-strings *features*))
-        ((= #x10000 char-code-limit)
-         (pushnew :utf-16-strings *features*))
-        ((<= 256 char-code-limit)
-         (pushnew :utf-8-strings *features*))))
+#+string-is-utf-8
+(defmethod utf-8-p ((unicode string))
+  t)
+
+#+string-is-utf-16
+(defmethod utf-16-p ((unicode string))
+  t)
 
 
-;; String as utf-8
-#+utf-8-strings
-(progn
-  (defconstant +string-unicode-type+ 'utf-8)
+#+string-is-utf-32
+(defmethod utf-32-p ((unicode string))
+  t)
 
 
-  (defmethod utf-8-p ((unicode string))
-    t)
+(defmethod unicode-length ((unicode string))
+  (length unicode))
 
 
-  (defmethod unicode-length ((unicode string))
-    (length unicode))
+#+string-is-utf-8
+(defmethod u8ref ((unicode string) index)
+  (char-code (char unicode index)))
 
 
-  (defmethod u8ref ((unicode string) index)
-    (char-code (char unicode index)))
+#+string-is-utf-16
+(defmethod u16ref ((unicode string) index)
+  (char-code (char unicode index)))
 
 
-  (defmethod (setf u8ref) (code-unit (unicode string) index)
-    (setf (char unicode index) (code-char code-unit))
-    code-unit)
+#+string-is-utf-32
+(defmethod u32ref ((unicode string) index)
+  (char-code (char unicode index)))
 
 
-  ;; Character as utf-8
+#+string-is-utf-8
+(defmethod (setf u8ref) (code-unit (unicode string) index)
+  (setf (char unicode index) (code-char code-unit))
+  code-unit)
 
-  (defmethod utf-8-p ((character character))
-    t)
+#+string-is-utf-16
+(defmethod (setf u16ref) (code-unit (unicode string) index)
+  (setf (char unicode index) (code-char code-unit))
+  code-unit)
 
-
-  (defmethod unicode-length ((character character))
-    1)
-
-
-  (defmethod u8ref ((character character) index)
-    (assert (zerop index) (index)
-            "u8ref: Invalid index ~A for character ~S as unicode. Must be 0."
-            index
-            character)
-    (char-code character)))
+#+string-is-utf-32
+(defmethod (setf u32ref) (code-unit (unicode string) index)
+  (setf (char unicode index) (code-char code-unit))
+  code-unit)
 
 
-;; String as utf-16
-#+utf-16-strings
-(progn
-  (defconstant +string-unicode-type+ 'utf-16)
+;; Character as unicode
+
+#+string-is-utf-8
+(defmethod utf-8-p ((character character))
+  t)
 
 
-  (defmethod utf-16-p ((unicode string))
-    t)
+#+string-is-utf-16
+(defmethod utf-16-p ((character character))
+  t)
 
 
-  (defmethod unicode-length ((unicode string))
-    (length unicode))
+#+string-is-utf-32
+(defmethod utf-32-p ((character character))
+  t)
 
 
-  (defmethod u16ref ((unicode string) index)
-    (char-code (char unicode index)))
+(defmethod unicode-length ((character character))
+  1)
 
 
-  (defmethod (setf u16ref) (code-unit (unicode string) index)
-    (setf (char unicode index) (code-char code-unit))
-    code-unit)
+#+string-is-utf-8
+(defmethod u8ref ((character character) index)
+  (assert (zerop index) (index)
+          "u8ref: Invalid index ~A for character ~S as unicode. Must be 0."
+          index
+          character)
+  (char-code character))
+
+#+string-is-utf-16
+(defmethod u16ref ((character character) index)
+  (assert (zerop index) (index)
+          "u16ref: Invalid index ~A for character ~S as unicode. Must be 0."
+          index
+          character)
+  (char-code character))
 
 
-  ;; Character as utf-16
-
-  (defmethod utf-16-p ((character character))
-    t)
-
-
-  (defmethod unicode-length ((character character))
-    1)
-
-
-  (defmethod u16ref ((character character) index)
-    (assert (zerop index) (index)
-            "u16ref: Invalid index ~A for character ~S as unicode. Must be 0."
-            index
-            character)
-    (char-code character)))
-
-
-;; String as utf-32
-#+utf-32-strings
-(progn
-  (defconstant +string-unicode-type+ 'utf-32)
-
-
-  (defmethod utf-32-p ((unicode string))
-    t)
-
-
-  (defmethod unicode-length ((unicode string))
-    (length unicode))
-
-
-  (defmethod u32ref ((unicode string) index)
-    (char-code (char unicode index)))
-
-
-  (defmethod (setf u32ref) (code-unit (unicode string) index)
-    (setf (char unicode index) (code-char code-unit))
-    code-unit)
-
-
-  ;; Character as utf-32
-
-  (defmethod utf-32-p ((character character))
-    t)
-
-
-  (defmethod unicode-length ((character character))
-    1)
-
-
-  (defmethod u32ref ((character character) index)
-    (assert (zerop index) (index)
-            "u32ref: Invalid index ~A for character ~S as unicode. Must be 0."
-            index
-            character)
-    (char-code character)))
+#+string-is-utf-32
+(defmethod u32ref ((character character) index)
+  (assert (zerop index) (index)
+          "u32ref: Invalid index ~A for character ~S as unicode. Must be 0."
+          index
+          character)
+  (char-code character))
 
 
 ;; utf-8 unicode

@@ -6,12 +6,7 @@
   :depends-on ()
   :serial t
   :components ((:file "package")
+               (:file "features")
                (:file "unicode-text")
                (:file "syntax")
                (:file "test-syntax")))
-
-
-
-;;(pushnew :force-utf-8-strings *features*)
-;;(pushnew :force-utf-16-strings *features*)
-;;(pushnew :force-utf-32-strings *features*)
