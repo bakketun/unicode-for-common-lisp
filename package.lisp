@@ -6,17 +6,17 @@
 (defpackage #:unicode
   (:use :common-lisp)
   (:export
-   :*default-unicode-type*
-   :+string-unicode-type+
+   :*default-text-type*
+   :+string-text-type+
    :code-point
    :code-point-at
    :code-point-before
    :code-point-count
-   :concatenate-unicode
-   :copy-unicode
+   :concatenate-text
+   :copy-text
    :do-code-points
-   :enable-unicode-syntax
-   :make-unicode
+   :enable-unicode-text-syntax
+   :make-text
    :make-utf-8
    :make-utf-16
    :make-utf-32
@@ -27,15 +27,15 @@
    :u8ref
    :u16ref
    :u32ref
-   :unicode
-   :unicode-length
-   :unicode-length-for
-   :unicode-ref
-   :unicode-scalar
-   :unicode-string
-   :unicode-transform-error
-   :unicode-type
-   :unicodep
+   :text
+   :text-length
+   :text-length-for
+   :text-ref
+   :text-scalar
+   :text-string
+   :text-transform-error
+   :text-type
+   :textp
    :utf-8
    :utf-8-code-unit
    :utf-8-length

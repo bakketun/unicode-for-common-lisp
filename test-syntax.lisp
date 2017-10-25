@@ -2,7 +2,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (setf *readtable* (copy-readtable))
-  (unicode:enable-unicode-syntax))
+  (unicode:enable-unicode-text-syntax))
 
 (list
   ;; Hex code point

@@ -1,10 +1,10 @@
 (in-package #:unicode)
 
 
-(defparameter *unicode-syntax-readtable* (copy-readtable nil))
+(defparameter *unicode-text-syntax-readtable* (copy-readtable nil))
 
 
-(defvar *unicode-syntax-current-type* nil)
+(defvar *unicode-text-syntax-current-type* nil)
 
 
 (defun hex-code-point-reader (stream char)
@@ -23,13 +23,13 @@
     (assert (and (plusp (length hex))
                  code-point
                  (char= #\+ (char hex 0)))
-            () "Invalid Unicode syntax: ~A~A" char hex)
+            () "Invalid Unicode text syntax: ~A~A" char hex)
     (check-type code-point code-point)
-    (code-point code-point :type *unicode-syntax-current-type*)))
+    (code-point code-point :type *unicode-text-syntax-current-type*)))
 
 
-(set-macro-character #\U 'hex-code-point-reader t *unicode-syntax-readtable*)
-(set-macro-character #\u 'hex-code-point-reader t *unicode-syntax-readtable*)
+(set-macro-character #\U 'hex-code-point-reader t *unicode-text-syntax-readtable*)
+(set-macro-character #\u 'hex-code-point-reader t *unicode-text-syntax-readtable*)
 
 
 (defun find-code-point (name)
@@ -47,25 +47,25 @@
                   until (char= #\} next-char)
                   collect next-char)
             'string))
-   :type *unicode-syntax-current-type*))
+   :type *unicode-text-syntax-current-type*))
 
 
-(set-macro-character #\{ 'named-code-point-reader nil *unicode-syntax-readtable*)
+(set-macro-character #\{ 'named-code-point-reader nil *unicode-text-syntax-readtable*)
 
 
 (defun code-units-reader (stream char)
   (declare (ignore char))
-  (assert *unicode-syntax-current-type*
-          () "Code units syntax only allowed in Unicode literals with explict type.")
+  (assert *unicode-text-syntax-current-type*
+          () "Code units syntax only allowed in Unicode text literals with explict type.")
   (let ((code-units (let ((*read-base* 16))
                       (read-delimited-list #\> stream t))))
-    (make-unicode (length code-units) :type *unicode-syntax-current-type* :initial-contents code-units)))
+    (make-text (length code-units) :type *unicode-text-syntax-current-type* :initial-contents code-units)))
 
-(set-macro-character #\< 'code-units-reader nil *unicode-syntax-readtable*)
-(set-macro-character #\> (get-macro-character #\) nil) nil *unicode-syntax-readtable*)
+(set-macro-character #\< 'code-units-reader nil *unicode-text-syntax-readtable*)
+(set-macro-character #\> (get-macro-character #\) nil) nil *unicode-text-syntax-readtable*)
 
 
-(defun unicode-reader (stream char n)
+(defun unicode-text-reader (stream char n)
   (let* ((type (case n
                 (8 'utf-8)
                 (16 'utf-16)
@@ -73,14 +73,14 @@
                 (0 'string)
                 ((nil) nil)
                 (otherwise
-                 (error "Invalid numeric Unicode type designator: ~S" n))))
-         (*unicode-syntax-current-type* type)
+                 (error "Invalid numeric Unicode text type designator: ~S" n))))
+         (*unicode-text-syntax-current-type* type)
          (next-char (peek-char t stream t nil t)))
     (case next-char
       (#\(
        (read-char stream t nil t)
-       (let ((*readtable* *unicode-syntax-readtable*))
-         (concatenate-unicode (read-delimited-list #\) stream t) :type type)))
+       (let ((*readtable* *unicode-text-syntax-readtable*))
+         (concatenate-text (read-delimited-list #\) stream t) :type type)))
       ((#\+)
        (hex-code-point-reader stream char))
       ((#\{)
@@ -88,13 +88,13 @@
        (named-code-point-reader stream next-char))
       ((#\<)
        (read-char stream t nil t)
-       (let ((*readtable* *unicode-syntax-readtable*))
+       (let ((*readtable* *unicode-text-syntax-readtable*))
          (code-units-reader stream next-char)))
       ((#\")
-       (unicode (read stream t nil t) :type type))
+       (text (read stream t nil t) :type type))
       (otherwise
-       (error "Invalid Unicode syntax: #~@[~A~]~A~A" n char next-char)))))
+       (error "Invalid Unicode text syntax: #~@[~A~]~A~A" n char next-char)))))
 
 
-(defun enable-unicode-syntax ()
-  (set-dispatch-macro-character #\# #\u 'unicode-reader))
+(defun enable-unicode-text-syntax ()
+  (set-dispatch-macro-character #\# #\u 'unicode-text-reader))
