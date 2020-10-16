@@ -1,4 +1,4 @@
-(defsystem #:unicode
+(asdf:defsystem #:unicode
   :name "unicode"
   :licence "TODO"
   :author "Thomas Bakketun <thomas.bakketun@copyleft.no>"
