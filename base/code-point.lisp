@@ -83,3 +83,26 @@
 
 (defun code-point-char (code-point)
   (svref +map-code-point-int-to-char+ (code-point-int code-point)))
+
+
+(defun surrogate-code-point-p (object)
+  (typep (code-point-int object) '(integer #xD800 #xDFFF)))
+
+
+(deftype surrogate-code-point ()
+  '(and code-point
+    (satisfies surrogate-code-point-p)))
+
+
+(deftype scalar-value ()
+  '(and code-point
+    (not surrogate-code-point)))
+
+
+(defun scalar-value-p (object)
+  (typep object 'scalar-value))
+
+
+(defun scalar-value (object)
+  (when (typep object 'scalar-value)
+    (code-point-int object)))
