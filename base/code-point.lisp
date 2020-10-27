@@ -3,14 +3,16 @@
 
 
 (defparameter +named-char-map+
-  (loop :for (name . code) :in '(("Space" . 32)
-                                 ("Newline" . 10)
-                                 ;; Semi standarc chars
-                                 ("Backspace" . 8)
+  (loop :for (name . code) :in '(("Backspace" . 8)
                                  ("Tab" . 9)
+                                 ;; If #\Linefeed and #\Newline are
+                                 ;; different characters code-point 10
+                                 ;; should map to #\Linefeed.
                                  ("Linefeed" . 10)
+                                 ("Newline" . 10)
                                  ("Page" . 12)
                                  ("Return" . 13)
+                                 ("Space" . 32)
                                  ("Rubout" . 127))
         :for char := (name-char name)
         :when char
@@ -72,10 +74,11 @@
      object)
     (standard-code-point
      (standard-code-point-int object))
-    ((member #\Newline)
-     10)
     ((or standard-char semi-standard-char)
      (svref +map-char-code-to-code-point-int+ (char-code object)))
+    ;; For implementations where Newline is different from Linefeed.
+    ((member #\Newline)
+     10)
     (t
      (generic-code-point-int object))))
 
