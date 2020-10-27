@@ -69,7 +69,9 @@
 
 
 (defun code-point-int (object)
-  "Return the code point integer designated for the given object, or nil."
+  "Return the code point integer designated for the given object, or nil.
+
+The values returned for character objects are implentation defined."
   (typecase object
     (integer
      object)
@@ -90,8 +92,6 @@
 
 
 (defun code-point-char (code-point)
-  ;; Note: If #\Newline and #\Linefeed are different, (code-point-char 10) should return #\Linefeed.
-  ;; (code-point-int #\Newline) and (code-point-int #\Linefeed) should always return 10.
   (svref +map-code-point-int-to-char+ (code-point-int code-point)))
 
 
