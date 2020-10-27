@@ -6,8 +6,7 @@
   (defparameter +semi-standard-char-name-map+
     (loop :for (name . code) :in '(("Backspace" . 8)
                                    ("Tab" . 9)
-                                   ;; Linefeed is implentation defined.
-                                   ;; code-point 10 is always Newline
+                                   ("Linefeed" . 10)
                                    ("Page" . 12)
                                    ("Return" . 13)
                                    ("Space" . 32)
@@ -37,7 +36,8 @@
   '(or
     code-point-int
     standard-code-point
-    standard-char
+    (and standard-char
+     (not (member #\Newline)))
     semi-standard-char
     (satisfies generic-code-point-int)))
 
@@ -58,8 +58,6 @@
   (coerce
    (loop :for code-point-int :from 0 :to 127
          :for char := (typecase code-point-int
-                        ((member 10)
-                         #\Newline)
                         ((integer 32 126)
                          (char +graphic-and-space-standard-chars+ (- code-point-int 32)))
                         (t
@@ -73,7 +71,7 @@
 (defun code-point-int (object)
   "Return the code point integer designated for the given object, or nil.
 
-The values returned for character objects are implentation defined."
+Note: #\Newline might or might not map to a code-point."
   (typecase object
     (integer
      object)
