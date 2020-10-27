@@ -6,7 +6,8 @@
   (defparameter +semi-standard-char-name-map+
     (loop :for (name . code) :in '(("Backspace" . 8)
                                    ("Tab" . 9)
-                                   ("Linefeed" . 10)
+                                   ;; Linefeed is implentation defined.
+                                   ;; code-point 10 is always Newline
                                    ("Page" . 12)
                                    ("Return" . 13)
                                    ("Space" . 32)
@@ -50,18 +51,19 @@
 
 
 (defparameter +map-char-to-code-point-int+
-  (let ((h (make-hash-table)))
-    ;; For implentations where #\Newline is different from #\Linefeed.
-    (setf (gethash #\Newline h) 10)
-    h))
+  (make-hash-table))
 
 
 (defparameter +map-code-point-int-to-char+
   (coerce
    (loop :for code-point-int :from 0 :to 127
-         :for char := (if (<= 32 code-point-int 126)
-                          (char +graphic-and-space-standard-chars+ (- code-point-int 32))
-                          (car (find code-point-int +semi-standard-char-name-map+ :key #'cdr)))
+         :for char := (typecase code-point-int
+                        ((member 10)
+                         #\Newline)
+                        ((integer 32 126)
+                         (char +graphic-and-space-standard-chars+ (- code-point-int 32)))
+                        (t
+                         (car (find code-point-int +semi-standard-char-name-map+ :key #'cdr))))
          :when char
            :do (setf (gethash char +map-char-to-code-point-int+) code-point-int)
          :collect char)
