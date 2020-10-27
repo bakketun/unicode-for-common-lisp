@@ -11,10 +11,7 @@
                                  ("Linefeed" . 10)
                                  ("Page" . 12)
                                  ("Return" . 13)
-                                 ("Rubout" . 127)
-                                 ;; More ...
-                                 ("Null" . 0)
-                                 )
+                                 ("Rubout" . 127))
         :for char := (name-char name)
         :when char
           :collect (cons char code)))
