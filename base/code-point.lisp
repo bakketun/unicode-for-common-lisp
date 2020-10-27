@@ -96,7 +96,8 @@ Note: #\Newline might or might not map to a code-point."
 
 
 (defun surrogate-code-point-p (object)
-  (typep (code-point-int object) '(integer #xD800 #xDFFF)))
+  (when (typep (code-point-int object) '(integer #xD800 #xDFFF))
+    object))
 
 
 (deftype surrogate-code-point ()
@@ -109,10 +110,11 @@ Note: #\Newline might or might not map to a code-point."
     (not surrogate-code-point)))
 
 
-(defun scalar-value-p (object)
-  (typep object 'scalar-value))
-
-
 (defun scalar-value (object)
+  (check-type object scalar-value)
+  (scalar-value-p object))
+
+
+(defun scalar-value-p (object)
   (when (typep object 'scalar-value)
     (code-point-int object)))
