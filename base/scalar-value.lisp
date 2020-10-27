@@ -42,7 +42,7 @@
          :for char := (case scalar-value-int
                         (8 #\Backspace)
                         (9 #\Tab)
-                        (10 #\Linefeed)
+                        (10 #\Newline)
                         (12 #\Page)
                         (13 #\Return)
                         (32 #\Space)
@@ -64,9 +64,7 @@
   (:method ((int integer))
     int)
   (:method ((char character))
-    (case char
-      (#\Newline 10)
-      (otherwise (svref +map-char-code-to-scalar-value-int+ (char-code char))))))
+    (svref +map-char-code-to-scalar-value-int+ (char-code char))))
 
 
 (defun scalar-value-int (object)
