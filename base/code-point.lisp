@@ -2,25 +2,22 @@
   '(integer 0 #x10FFFF))
 
 
-(defparameter +named-char-map+
-  (loop :for (name . code) :in '(("Backspace" . 8)
-                                 ("Tab" . 9)
-                                 ;; If #\Linefeed and #\Newline are
-                                 ;; different characters code-point 10
-                                 ;; should map to #\Linefeed.
-                                 ("Linefeed" . 10)
-                                 ("Newline" . 10)
-                                 ("Page" . 12)
-                                 ("Return" . 13)
-                                 ("Space" . 32)
-                                 ("Rubout" . 127))
-        :for char := (name-char name)
-        :when char
-          :collect (cons char code)))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter +semi-standard-char-name-map+
+    (loop :for (name . code) :in '(("Backspace" . 8)
+                                   ("Tab" . 9)
+                                   ("Linefeed" . 10)
+                                   ("Page" . 12)
+                                   ("Return" . 13)
+                                   ("Space" . 32)
+                                   ("Rubout" . 127))
+          :for char := (name-char name)
+          :when char
+            :collect (cons char code))))
 
 
-(deftype semi+-standard-char ()
-  `(member ,@(mapcar #'car +named-char-map+)))
+(deftype semi-standard-char ()
+  `(member ,@(mapcar #'car +semi-standard-char-name-map+)))
 
 
 (defstruct (standard-code-point
@@ -40,7 +37,7 @@
     code-point-int
     standard-code-point
     standard-char
-    semi+-standard-char
+    semi-standard-char
     (satisfies generic-code-point-int)))
 
 
@@ -48,23 +45,27 @@
   (typep object 'code-point))
 
 
-(defparameter +graphic-standard-chars+
-  "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
+(defparameter +graphic-and-space-standard-chars+
+  " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
+
+
+(defparameter +map-char-to-code-point-int+
+  (let ((h (make-hash-table)))
+    ;; For implentations where #\Newline is different from #\Linefeed.
+    (setf (gethash #\Newline h) 10)
+    h))
+
 
 (defparameter +map-code-point-int-to-char+
   (coerce
    (loop :for code-point-int :from 0 :to 127
-         :for char := (if (<= 33 code-point-int 126)
-                          (char +graphic-standard-chars+ (- code-point-int 33))
-                          (car (find code-point-int +named-char-map+ :key #'cdr)))
+         :for char := (if (<= 32 code-point-int 126)
+                          (char +graphic-and-space-standard-chars+ (- code-point-int 32))
+                          (car (find code-point-int +semi-standard-char-name-map+ :key #'cdr)))
+         :when char
+           :do (setf (gethash char +map-char-to-code-point-int+) code-point-int)
          :collect char)
    'vector))
-
-
-(defparameter +map-char-code-to-code-point-int+
-  (map 'vector (lambda (char)
-                 (and char (char-code char)))
-       +map-code-point-int-to-char+))
 
 
 (defun code-point-int (object)
@@ -75,10 +76,7 @@
     (standard-code-point
      (standard-code-point-int object))
     ((or standard-char semi-standard-char)
-     (svref +map-char-code-to-code-point-int+ (char-code object)))
-    ;; For implementations where Newline is different from Linefeed.
-    ((member #\Newline)
-     10)
+     (gethash object +map-char-to-code-point-int+))
     (t
      (generic-code-point-int object))))
 
