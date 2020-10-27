@@ -2,8 +2,26 @@
   '(integer 0 #x10FFFF))
 
 
-(deftype semi-standard-char ()
-  '(member #\Tab #\Page #\Rubout #\Linefeed #\Return #\Backspace))
+(defparameter +named-char-map+
+  (loop :for (name . code) :in '(("Space" . 32)
+                                 ("Newline" . 10)
+                                 ;; Semi standarc chars
+                                 ("Backspace" . 8)
+                                 ("Tab" . 9)
+                                 ("Linefeed" . 10)
+                                 ("Page" . 12)
+                                 ("Return" . 13)
+                                 ("Rubout" . 127)
+                                 ;; More ...
+                                 ("Null" . 0)
+                                 )
+        :for char := (name-char name)
+        :when char
+          :collect (cons char code)))
+
+
+(deftype semi+-standard-char ()
+  `(member ,@(mapcar #'car +named-char-map+)))
 
 
 (defstruct (standard-code-point
@@ -23,8 +41,7 @@
     code-point-int
     standard-code-point
     standard-char
-    semi-standard-char
-    ;; implementation defined: maybe base-char, character
+    semi+-standard-char
     (satisfies generic-code-point-int)))
 
 
@@ -38,19 +55,12 @@
 (defparameter +map-code-point-int-to-char+
   (coerce
    (loop :for code-point-int :from 0 :to 127
-         :for char := (case code-point-int
-                        (8 #\Backspace)
-                        (9 #\Tab)
-                        (10 #\Linefeed)
-                        (12 #\Page)
-                        (13 #\Return)
-                        (32 #\Space)
-                        (127 #\Rubout)
-                        (otherwise
-                         (when (<= 33 code-point-int 126)
-                           (char +graphic-standard-chars+ (- code-point-int 33)))))
+         :for char := (if (<= 33 code-point-int 126)
+                          (char +graphic-standard-chars+ (- code-point-int 33))
+                          (car (find code-point-int +named-char-map+ :key #'cdr)))
          :collect char)
    'vector))
+
 
 (defparameter +map-char-code-to-code-point-int+
   (map 'vector (lambda (char)
