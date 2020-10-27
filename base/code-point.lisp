@@ -42,10 +42,6 @@
     (satisfies generic-code-point-int)))
 
 
-(defun code-point-p (object)
-  (typep object 'code-point))
-
-
 (defparameter +graphic-and-space-standard-chars+
   " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~")
 
@@ -68,19 +64,24 @@
    'vector))
 
 
-(defun code-point-int (object)
-  "Return the code point integer designated for the given object, or nil.
+(defun code-point-p (object)
+  "If object type code-point returns the integer value of the code point, othewise NIL.
 
 Note: #\Newline might or might not map to a code-point."
   (typecase object
-    (integer
+    (code-point-int
      object)
     (standard-code-point
      (standard-code-point-int object))
     ((or standard-char semi-standard-char)
-     (gethash object +map-char-to-code-point-int+))
+     (values (gethash object +map-char-to-code-point-int+)))
     (t
      (generic-code-point-int object))))
+
+
+(defun code-point-code (object)
+  (check-type object code-point)
+  (code-point-p object))
 
 
 (defun standard-code-point (code-point)
