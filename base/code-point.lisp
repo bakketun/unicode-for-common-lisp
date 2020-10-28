@@ -89,15 +89,15 @@ Note: #\Newline might or might not map to a code-point."
     (standard-code-point
      code-point)
     (code-point
-     (make-standard-code-point (code-point-int code-point)))))
+     (make-standard-code-point (code-point-code code-point)))))
 
 
 (defun code-point-char (code-point)
-  (svref +map-code-point-int-to-char+ (code-point-int code-point)))
+  (svref +map-code-point-int-to-char+ (code-point-code code-point)))
 
 
 (defun surrogate-code-point-p (object)
-  (when (typep (code-point-int object) '(integer #xD800 #xDFFF))
+  (when (typep (code-point-code object) '(integer #xD800 #xDFFF))
     object))
 
 
@@ -118,4 +118,4 @@ Note: #\Newline might or might not map to a code-point."
 
 (defun scalar-value-p (object)
   (when (typep object 'scalar-value)
-    (code-point-int object)))
+    (code-point-code object)))
