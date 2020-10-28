@@ -1,9 +1,10 @@
 
-;#-(or code-point-is-integer code-point-is-character code-point-is-class)
+#-(or code-point-is-integer code-point-is-character code-point-is-class)
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;(pushnew :code-point-is-integer *features*)
   ;(pushnew :code-point-is-character *features*)
-  (pushnew :code-point-is-class *features*))
+  (pushnew :code-point-is-class *features*)
+  )
 
 
 (deftype code-point-code ()
@@ -30,7 +31,8 @@
   #+code-point-is-integer
   'code-point-code
   #+code-point-is-character
-  'character)
+  '(and character
+    (not (member #\Newline))))
 
 
 (defun code-point (object)
@@ -100,7 +102,6 @@
   (defparameter +semi-standard-char-name-map+
     (loop :for (name . code) :in '(("Backspace" . 8)
                                    ("Tab" . 9)
-                                   ("Linefeed" . 10)
                                    ("Page" . 12)
                                    ("Return" . 13)
                                    ("Space" . 32)
