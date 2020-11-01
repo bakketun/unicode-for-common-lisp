@@ -13,16 +13,16 @@ numbers value.
 
 Standard characters denotes code points as in the table below.
 
-If an implenetation supports any of the semi standard characters, they
+If an implementation supports any of the semi standard characters, they
 denote code points as in the table below.
 
-It is implenetation defined what code point, if any, `Newline`
+It is implementation defined what code point, if any, `Newline`
 denotes. If supported, `Linefeed` always denotes U+000A. This implies
 that if `Newline` and `Linefeed` are the same character, they both
 denotes U+000A.
 
 `code-point` and `character` are always overlapping types. Depending
-on implenetation `code-point` can be a subtype of `character` or
+on implementation `code-point` can be a subtype of `character` or
 `character` can be a subtype of `code-point`. A conforming program
 must not assume that all code points can be denoted by a character or
 that all characters denotes a code point.
