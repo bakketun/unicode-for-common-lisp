@@ -1,4 +1,6 @@
 (copy-readtable) (set-syntax-from-char #\  #\Space) ; no-break space as space
+(set-syntax-from-char #\· #\Space)
+
 
 (defmacro with-gensyms (syms &body body)
   `(let ,(loop for s in syms collect `(,s (gensym ,(symbol-name s))))
@@ -70,13 +72,13 @@
   ;; 3
   (when (zerop bytes-needed)
     (typecase %byte
-      ((integer #x00 #x7f)                            (%return-code-point %byte))
+      ((integer #x00 #x7f)   ·  ·  ·  ·  ·  ·  ·  ·   (%return-code-point %byte))
 
-      ((integer #xc2 #xdf)                            (setf bytes-needed     1
+      ((integer #xc2 #xdf)   ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     1
                                                             code-point       (ldb (byte 5 0) %byte)))
       ((integer #xe0 #xef)   (when (eql %byte #xe0)   (setf lower-boundary   #xa0))
                              (when (eql %byte #xed)   (setf upper-boundary   #x9f))
-                                                      (setf bytes-needed     2
+                             ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     2
                                                             code-point       (ldb (byte 4 0) %byte)))
       ((integer #xF0 #xF4)   (when (eql %byte #xf0)   (setf lower-boundary   #x90))
                              (when (eql %byte #xf4)   (setf upper-boundary   #x8f))
