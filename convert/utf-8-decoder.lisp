@@ -71,8 +71,8 @@
       ;; 0x00 to 0x7F
       ((integer #x00 #x7f)  (%return-code-point %byte))
       ;; 0xC2 to 0xDF
-      ((integer #xc2 #xdf)  (setf bytes-needed    1
-                                  code-point      (ldb (byte 5 0) %byte)))
+      ((integer #xc2 #xdf)  (setf bytes-needed   1
+                                  code-point     (ldb (byte 5 0) %byte)))
       ;; 0xE0 to 0xEF
       ((integer #xe0 #xef) (progn
                              (when (eql %byte #xe0)  (setf lower-boundary #xa0))
