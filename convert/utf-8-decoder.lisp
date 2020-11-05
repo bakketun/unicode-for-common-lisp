@@ -6,31 +6,38 @@
   (let ((variables (mapcar #'car state))
         (handler-name (intern (format nil "~A-HANDLER" name) (symbol-package name))))
     `(progn
-       ,(with-gensyms (status /code-point/ unread-byte)
+       ,(with-gensyms (status /code-point/ unread-byte return error)
           `(defun ,handler-name (%eofp %byte ,@variables &aux ,unread-byte)
-             (flet ((%return (,status &optional (,/code-point/ 0))
-                      (return-from ,handler-name (values ,/code-point/
-                                                         ,status
-                                                         ,unread-byte
-                                                         ,@variables)))
-                    (%unread-byte ()
-                      (setf ,unread-byte %byte)))
+             (labels ((,return (,status ,error ,/code-point/)
+                               (return-from ,handler-name (values ,/code-point/
+                                                                  ,status
+                                                                  ,error
+                                                                  ,unread-byte
+                                                                  ,@variables)))
+                      (%return-code-point (,/code-point/)
+                        (,return :code-point nil ,/code-point/))
+                      (%return-continue () (,return :continue nil 0))
+                      (%return-finished () (,return :finished nil 0))
+                      (%return-error (,error) (,return :error ,error 0))
+                      (%unread-byte ()
+                        (setf ,unread-byte %byte)))
                ,@body)))
-       ,(with-gensyms (bytes returned-code-point status unread-byte decode-1 eofp byte i)
+       ,(with-gensyms (bytes returned-code-point status error unread-byte decode-1 eofp byte i)
           `(defun ,name (,bytes)
-             (let ((,returned-code-point)
-                   (,status)
-                   (,unread-byte)
+             (let (,returned-code-point
+                   ,status
+                   ,error
+                   ,unread-byte
                    ,@state)
                (flet ((,decode-1 (,eofp ,byte)
                         (multiple-value-setq
-                            (,returned-code-point ,status ,unread-byte ,@variables)
+                            (,returned-code-point ,status ,error ,unread-byte ,@variables)
                           (,handler-name ,eofp ,byte ,@variables)))
                       (,returned-code-point (,byte)
                         (case ,status
-                          (%code-point ,returned-code-point)
+                          (:code-point ,returned-code-point)
                           (otherwise
-                           (list ,byte ,status ,unread-byte
+                           (list ,byte ,status ,error ,unread-byte
                                  (list ,@variables))))))
                  (loop :for ,byte :across ,bytes
                        :for ,i :downfrom (1- (length ,bytes))
@@ -54,15 +61,15 @@
   ;; 1
   (when (and %eofp (plusp bytes-needed))
     (setf bytes-needed 0)
-    (%return :truncated-sequence))
+    (%return-error :truncated-sequence))
   ;; 2
   (when %eofp
-    (%return '%finished))
+    (%return-finished))
   ;; 3
   (when (zerop bytes-needed)
     (typecase %byte
       ;; 0x00 to 0x7F
-      ((integer #x00 #x7f)  (%return '%code-point %byte))
+      ((integer #x00 #x7f)  (%return-code-point %byte))
       ;; 0xC2 to 0xDF
       ((integer #xc2 #xdf)  (setf bytes-needed    1
                                   code-point      (ldb (byte 5 0) %byte)))
@@ -79,8 +86,8 @@
                              (setf bytes-needed  3
                                    code-point    (ldb (byte 3 0) %byte))))
       ;; Otherwise
-      (t                    (%return :invalid-first-byte)))
-    (%return '%continue))
+      (t                    (%return-error :invalid-first-byte)))
+    (%return-continue))
   ;; 4
   (unless (<= lower-boundary %byte upper-boundary)
     (setf code-point      0
@@ -89,7 +96,7 @@
           lower-boundary  #x80
           upper-boundary  #xBF)
     (%unread-byte)
-    (%return :invalid-second-byte))
+    (%return-error :invalid-second-byte))
   ;; 5
   (setf lower-boundary  #x80
         upper-boundary  #xBF)
@@ -99,7 +106,7 @@
   (incf bytes-seen)
   ;; 8
   (unless (eql bytes-seen bytes-needed)
-    (%return '%continue))
+    (%return-continue))
   ;; 9
   (let ((/code-point/ code-point))
     ;; 10
@@ -107,7 +114,7 @@
           bytes-needed  0
           bytes-seen    0)
     ;; 11
-    (%return '%code-point /code-point/)))
+    (%return-code-point /code-point/)))
 
 
 
