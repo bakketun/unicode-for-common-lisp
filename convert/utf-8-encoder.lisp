@@ -1,6 +1,6 @@
 (defun code-point-utf-8-encode (code-point)
-  (etypecase code-point ;         b̲y̲t̲e̲ ̲c̲o̲u̲n̲t     u̲p̲p̲e̲r̲ ̲b̲i̲t̲s             b̲i̲t̲ ̲s̲i̲z̲e  bi̲t̲ p̲o̲s̲i̲t̲i̲o̲n̲
-    ;;            f̲r̲o̲m̲   t̲o̲                |              |                    |  |
+  (etypecase code-point ;         byte count     upper bits             bit size  bit position
+    ;;            from   to                |              |                    |  |
     ((integer     #x00 #x7f)       (values 1                                          code-point))
     ((integer   #x0080 #x07ff)     (values 2    (logior #b11000000  (ldb (byte 5  6)  code-point))
                                            #||# (logior #b10000000  (ldb (byte 6  0)  code-point))))
