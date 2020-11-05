@@ -82,7 +82,7 @@
                                                             code-point       (ldb (byte 4 0) %byte)))
       ((integer #xF0 #xF4)   (when (eql %byte #xf0)   (setf lower-boundary   #x90))
                              (when (eql %byte #xf4)   (setf upper-boundary   #x8f))
-                                                      (setf bytes-needed     3
+                             ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     3
                                                             code-point       (ldb (byte 3 0) %byte)))
       ;; Otherwise
       (t                     (%return-error :invalid-first-byte)))
