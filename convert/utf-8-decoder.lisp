@@ -84,8 +84,8 @@
                              (when (eql %byte #xf4)   (setf upper-boundary   #x8f))
                              ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     3
                                                             code-point       (ldb (byte 3 0) %byte)))
-      ;; Otherwise
-      (t                     (%return-error :invalid-first-byte)))
+
+      (t #|  Otherwise  |#   ·  ·  ·  ·  ·  ·  ·  ·   (%return-error :invalid-first-byte)))
     (%return-continue))
   ;; 4
   (unless (<= lower-boundary %byte upper-boundary)
