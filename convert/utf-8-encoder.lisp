@@ -1,3 +1,5 @@
+(copy-readtable) (set-syntax-from-char #\  #\Space) ; no-break space as space
+
 (defun code-point-utf-8-encode (code-point)
   (etypecase code-point ;         byte count    upper bits             bit size  bit position
     ;;            from   to                |             |                    |  |

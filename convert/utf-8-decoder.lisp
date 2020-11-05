@@ -1,3 +1,5 @@
+(copy-readtable) (set-syntax-from-char #\  #\Space) ; no-break space as space
+
 (defmacro with-gensyms (syms &body body)
   `(let ,(loop for s in syms collect `(,s (gensym ,(symbol-name s))))
     ,@body))
@@ -68,23 +70,17 @@
   ;; 3
   (when (zerop bytes-needed)
     (typecase %byte
-      ;; 0x00 to 0x7F
-      ((integer #x00 #x7f)  (%return-code-point %byte))
-      ;; 0xC2 to 0xDF
-      ((integer #xc2 #xdf)  (setf bytes-needed   1
-                                  code-point     (ldb (byte 5 0) %byte)))
-      ;; 0xE0 to 0xEF
-      ((integer #xe0 #xef) (progn
-                             (when (eql %byte #xe0)  (setf lower-boundary #xa0))
-                             (when (eql %byte #xed)  (setf upper-boundary #x9f))
-                             (setf bytes-needed  2
-                                   code-point    (ldb (byte 4 0) %byte))))
-      ;; 0xF0 to 0xF4
-      ((integer #xF0 #xF4) (progn
-                             (when (eql %byte #xf0)  (setf lower-boundary #x90))
-                             (when (eql %byte #xf4)  (setf upper-boundary #x8f))
-                             (setf bytes-needed  3
-                                   code-point    (ldb (byte 3 0) %byte))))
+      ((integer #x00 #x7f)   (%return-code-point %byte))
+      ((integer #xc2 #xdf)                            (setf bytes-needed    1
+                                                            code-point      (ldb (byte 5 0) %byte)))
+      ((integer #xe0 #xef)   (when (eql %byte #xe0)   (setf lower-boundary  #xa0))
+                             (when (eql %byte #xed)   (setf upper-boundary  #x9f))
+                                                      (setf bytes-needed    2
+                                                            code-point      (ldb (byte 4 0) %byte)))
+      ((integer #xF0 #xF4)   (when (eql %byte #xf0)   (setf lower-boundary  #x90))
+                             (when (eql %byte #xf4)   (setf upper-boundary  #x8f))
+                                                      (setf bytes-needed    3
+                                                            code-point      (ldb (byte 3 0) %byte)))
       ;; Otherwise
       (t                    (%return-error :invalid-first-byte)))
     (%return-continue))
