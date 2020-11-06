@@ -1,5 +1,4 @@
-(copy-readtable) (set-syntax-from-char #\  #\Space) ; no-break space as space
-(set-syntax-from-char #\· #\Space)
+(copy-readtable) (set-syntax-from-char #\~ #\Space) ; Using ~ visual space
 
 
 (defmacro with-gensyms (syms &body body)
@@ -72,20 +71,20 @@
   ;; 3
   (when (zerop bytes-needed)
     (typecase %byte
-      ((integer #x00 #x7f)   ·  ·  ·  ·  ·  ·  ·  ·   (%return-code-point %byte))
+      ((integer #x00 #x7f)   ~    ~    ~    ~    ~    (%return-code-point %byte))
 
-      ((integer #xc2 #xdf)   ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     1
+      ((integer #xc2 #xdf)   ~    ~    ~    ~    ~    (setf bytes-needed     1
                                                             code-point       (ldb (byte 5 0) %byte)))
       ((integer #xe0 #xef)   (when (eql %byte #xe0)   (setf lower-boundary   #xa0))
-                             (when (eql %byte #xed)   (setf upper-boundary   #x9f))
-                             ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     2
-                                                            code-point       (ldb (byte 4 0) %byte)))
+       ~                     (when (eql %byte #xed)   (setf upper-boundary   #x9f))
+       ~                     ~    ~    ~    ~    ~    (setf bytes-needed     2
+       ~                                                    code-point       (ldb (byte 4 0) %byte)))
       ((integer #xF0 #xF4)   (when (eql %byte #xf0)   (setf lower-boundary   #x90))
-                             (when (eql %byte #xf4)   (setf upper-boundary   #x8f))
-                             ·  ·  ·  ·  ·  ·  ·  ·   (setf bytes-needed     3
-                                                            code-point       (ldb (byte 3 0) %byte)))
+       ~                     (when (eql %byte #xf4)   (setf upper-boundary   #x8f))
+       ~                     ~    ~    ~    ~    ~    (setf bytes-needed     3
+       ~                                                    code-point       (ldb (byte 3 0) %byte)))
 
-      (t #|  Otherwise  |#   ·  ·  ·  ·  ·  ·  ·  ·   (%return-error :invalid-first-byte)))
+      (t #|  Otherwise  |#   ~    ~    ~    ~    ~    (%return-error :invalid-first-byte)))
     (%return-continue))
   ;; 4
   (unless (<= lower-boundary %byte upper-boundary)
