@@ -1,20 +1,29 @@
 (copy-readtable) (set-syntax-from-char #\~ #\Space) ; Using ~ visual space
 
+
 (defun code-point-utf-8-encode (code-point)
-  (etypecase code-point ;         byte count    upper bits             bit size  bit position
-    ;;            from   to                |             |                    |  |
-    ((integer     #x00 #x7f)       (values 1                                         code-point))
-    ((integer   #x0080 #x07ff)     (values 2   (logior #b11000000  (ldb (byte 5  6)  code-point))
-                                           ~   (logior #b10000000  (ldb (byte 6  0)  code-point))))
-    ((integer   #x0800 #xffff)     (values 3
-                                           ~   (logior #b11100000  (ldb (byte 4 12)  code-point))
-                                           ~   (logior #b10000000  (ldb (byte 6  6)  code-point))
-                                           ~   (logior #b10000000  (ldb (byte 6  0)  code-point))))
-    ((integer #x100000 #x10ffff)   (values 4
-                                           ~   (logior #b11110000  (ldb (byte 3 18)  code-point))
-                                           ~   (logior #b10000000  (ldb (byte 6 12)  code-point))
-                                           ~   (logior #b10000000  (ldb (byte 6  6)  code-point))
-                                           ~   (logior #b10000000  (ldb (byte 6  0)  code-point))))))
+  "Returns five values: octet count, octet 0, octet 1, octet 3, octet 4."
+  (etypecase code-point
+
+    ;;         code-point range  |     octet |        | octet upper       |  bit |      bit | from code-point
+    ;;           (inclusive)     |     count |        | bits              | size | position | or padding zero
+
+    ((integer     #x00 #x7f)       (values 1                                                  code-point
+                                           ~                                                  0
+                                           ~                                                  0
+                                           ~                                                  0))
+    ((integer   #x0080 #x07ff)     (values 2   (logior #b11000000   (ldb (byte  5        6)   code-point))
+                                           ~   (logior #b10000000   (ldb (byte  6        0)   code-point))
+                                           ~                                                  0
+                                           ~                                                  0))
+    ((integer   #x0800 #xffff)     (values 3   (logior #b11100000   (ldb (byte  4       12)   code-point))
+                                           ~   (logior #b10000000   (ldb (byte  6        6)   code-point))
+                                           ~   (logior #b10000000   (ldb (byte  6        0)   code-point))
+                                           ~                                                  0))
+    ((integer #x100000 #x10ffff)   (values 4   (logior #b11110000   (ldb (byte  3       18)   code-point))
+                                           ~   (logior #b10000000   (ldb (byte  6       12)   code-point))
+                                           ~   (logior #b10000000   (ldb (byte  6        6)   code-point))
+                                           ~   (logior #b10000000   (ldb (byte  6        0)   code-point))))))
 
 
 (defun utf-8-encode-into (code-points vector &key start end)
