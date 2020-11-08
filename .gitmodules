@@ -1,0 +1,3 @@
+[submodule "unicode-character-database-mirror"]
+	path = unicode-character-database
+	url = https://github.com/bakketun/unicode-character-database-mirror
