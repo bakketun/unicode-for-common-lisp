@@ -1,0 +1,75 @@
+= Common Lisp and Unicode
+Thomas Bakketun
+:sectnums:
+:sectlinks:
+:sectanchors:
+:toc:
+
+== Standards Documents
+
+=== ANSI Common Lisp
+
+* INCITS 226-1994 (R1999) (formerly ANSI X3.226:1994)
+* Only available behind paywall:
+** PDF and printed https://www.techstreet.com/standards/incits-226-1994-r1999?product_id=56214
+** PDF https://webstore.ansi.org/Standards/INCITS/INCITS2261994S2008
+
+[#clhs]
+=== Common Lisp HyperSpec(TM) (CLHS)
+
+[quote,LispWorks Ltd.]
+____
+The Common Lisp HyperSpec™ is the acclaimed online version of the ANSI
+Common Lisp Standard, suitable for LispWorks users. The HyperSpec is
+derived from the official standard with permission from ANSI and NCITS
+(previously known as X3). It contains the full text of the ANSI
+standard and ancillary information.
+____
+
+* Available for free, online and download, but not for redistribution.
+* Info: https://www.lispworks.com/documentation/HyperSpec/
+* Start here: http://www.lispworks.com/documentation/HyperSpec/Front/index.htm
+* Mirror: http://clhs.lisp.se/
+
+
+:clhs: http://clhs.lisp.se/
+:cl_f_upper-case-p: {clhs}Body/f_upper_.htm#upper-case-p[CL:UPPER-CASE-P]
+:cl_t_character}: {clhs}Body/t_ch.htm[CL:CHARACTER^]
+:cl_t_string}: {clhs}Body/t_string.htm[CL:STRING^]
+:cl_standard_characters: {clhs}Body/02_ac.htm[Standard Characters^]
+:cl_character_names: {clhs}Body/13_ag.htm
+
+[Character Names^]
+
+=== The Unicode® Standard
+
+* Available for free, online and download.
+* http://www.unicode.org/versions/Unicode13.0.0/
+* Print-on-Demand (POD) for purchase:
+  https://www.lulu.com/en/us/shop/unicode-consortium/the-unicode-standard-version-130-volume-1/paperback/product-qkgep6.html[Volume 1]
+  and
+  https://www.lulu.com/en/us/shop/unicode-consortium/the-unicode-standard-version-130-volume-2/paperback/product-5682zw.html[Volume 2]
+
+
+== Text in Common Lisp
+
+In Common Lisp text is represented as strings of {cl_t_character} objects. The type {cl_t_string} is an alias for (vector character).
+
+All implementations must at least support 96 {cl_standard_characters}.
+
+.Standard Characters
+[horizontal]
+non-graphic:: `Newline` `Space`
+upper-case:: `A B C D E F G H I J K L M N O P Q R S T U V W X Y Z`
+lower-case:: `a b c d e f g h i j k l m n o p q r s t u v w x y z`
+digit:: `0 1 2 3 4 5 6 7 8 9`
+special::
+   `++ ! \ " # $ % & ' ( ) * + , - . / ++`
+   `++ : ; < = > ? @ ++`
+   `++ [ \ ] ` ^ _ ++`
+   `++ { | } ~ ++`
+
+The non-graphic characters have {cl_character_names}[names]. 
+
+
+
