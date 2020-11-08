@@ -37,9 +37,7 @@ ____
 :cl_t_character}: {clhs}Body/t_ch.htm[CL:CHARACTER^]
 :cl_t_string}: {clhs}Body/t_string.htm[CL:STRING^]
 :cl_standard_characters: {clhs}Body/02_ac.htm[Standard Characters^]
-:cl_character_names: {clhs}Body/13_ag.htm
-
-[Character Names^]
+:cl_character_names_: {clhs}Body/13_ag.htm
 
 === The Unicode® Standard
 
@@ -69,7 +67,4 @@ special::
    `++ [ \ ] ` ^ _ ++`
    `++ { | } ~ ++`
 
-The non-graphic characters have {cl_character_names}[names]. 
-
-
-
+The non-graphic characters have {cl_character_names_}[names^].
