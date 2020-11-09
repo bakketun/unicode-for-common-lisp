@@ -10,6 +10,10 @@
   ((code-units :type '(vector (unsigned-byte 8)))))
 
 
+(defmethod custring ((custring utf-8-string))
+  custring)
+
+
 (defgeneric utf-8-string (x)
   (:method ((x utf-8-string)) x)
   (:method (x)
@@ -40,11 +44,11 @@
                ((integer #xF0 #xF3) (values  3       #b00000111  #x80            #xBF))
                ((integer #xF4 #xF4) (values  3       #b00000111  #x80            #x8F)))
            (let ((code-point nil)
-                 (next (1+ index)))
+                 (next (1+ start)))
              ;; If first byte was valid, try to parse subsequence at start
              (when bytes-needed
                (setf code-point (logand first-byte mask))
-               (loop :with end := (length custring)
+               (loop :with end := (culength custring)
                      :repeat bytes-needed
                      :for byte := (if (< next end)
                                       (curef custring next)
