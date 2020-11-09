@@ -56,19 +56,6 @@ error - True if there was a decoding error."))
         :do (funcall function code-point)))
 
 
-(defgeneric code-point-vector (thing)
-  (:method (thing)
-    (code-point-vector (custring thing)))
-  (:method ((custring code-unit-string))
-    (let ((code-points (make-array (code-point-count custring) :element-type 'scalar-value))
-          (index 0))
-      (map-code-points (lambda (code-point)
-                         (setf (aref code-points index) code-point)
-                         (incf index))
-                       custring)
-      code-points)))
-
-
 (defgeneric utf-8-vector (thing)
   (:method (thing)
     (utf-8-vector (custring thing)))
@@ -88,3 +75,46 @@ error - True if there was a decoding error."))
                              (when (< 3 size)   (setf (aref vector index) b3)   (incf index))))
                          custring)
         vector))))
+
+
+(defgeneric utf-16-vector (thing)
+  (:method (thing)
+    (utf-16-vector (custring thing)))
+  (:method ((custring code-unit-string))
+    (let ((length 0))
+      (map-code-points (lambda (code-point)
+                         (check-type code-point scalar-value)
+                         (incf length (etypecase code-point
+                                        (bmp-code-point 1)
+                                        (t 2))))
+                       custring)
+      (let ((vector (make-array length :element-type '(unsigned-byte 16)))
+            (index 0))
+        (map-code-points (lambda (code-point)
+                           (etypecase code-point
+                             (bmp-code-point
+                              (setf (aref vector index) code-point)
+                              (incf index))
+                             (t
+                              (setf (aref vector index) (logior +first-high-surrogate+
+                                                                (1- (ldb (byte 5 16) code-point))
+                                                                (ldb (byte 6 10) code-point)))
+                              (incf index)
+                              (setf (aref vector index) (logior +first-low-surrogate+
+                                                                (ldb (byte 10 0) code-point)))
+                              (incf index))))
+                         custring)
+        vector))))
+
+
+(defgeneric code-point-vector (thing)
+  (:method (thing)
+    (code-point-vector (custring thing)))
+  (:method ((custring code-unit-string))
+    (let ((code-points (make-array (code-point-count custring) :element-type 'scalar-value))
+          (index 0))
+      (map-code-points (lambda (code-point)
+                         (setf (aref code-points index) code-point)
+                         (incf index))
+                       custring)
+      code-points)))

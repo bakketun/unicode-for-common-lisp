@@ -14,6 +14,12 @@
   ((code-units :type '(vector (unsigned-byte 16)))))
 
 
+(defgeneric utf-16-string (x)
+  (:method ((x utf-16-string)) x)
+  (:method (x)
+    (make-instance 'standard-utf-16-string :code-units (utf-16-vector x))))
+
+
 (defmethod code-point-at ((custring utf-16-string) index)
   (let ((code-point (curef custring index))
         (next (1+ index))
@@ -23,7 +29,7 @@
              (when (< 0 index (culength custring))
                (curef custring index)))
            (decode (leading trailing)
-             (logior (ash  (1- (ldb (byte  4 6) leading)) 16)
+             (logior (ash  (1+ (ldb (byte  4 6) leading)) 16)
                      (ash      (ldb (byte  6 0) leading)  10)
                      (ldb (byte 10 0) trailing))))
       (etypecase code-point
