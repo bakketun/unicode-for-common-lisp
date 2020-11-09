@@ -10,6 +10,12 @@
   ((code-units :type '(vector (unsigned-byte 8)))))
 
 
+(defgeneric utf-8-string (x)
+  (:method ((x utf-8-string)) x)
+  (:method (x)
+    (make-instance 'standard-utf-8-string :code-units (utf-8-vector x))))
+
+
 (defmethod code-point-at ((custring utf-8-string) index)
   (let ((first-byte (curef custring index)))
     (etypecase first-byte
