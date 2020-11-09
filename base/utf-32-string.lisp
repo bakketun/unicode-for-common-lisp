@@ -6,6 +6,10 @@
   (:documentation "A code-unit-string in UTF-32 encoding form."))
 
 
+(defmethod custring ((custring utf-32-string))
+  custring)
+
+
 (defclass standard-utf-32-string (utf-32-string byte-vector-code-unit-string)
   ((code-units :type '(vector (unsigned-byte 32)))))
 

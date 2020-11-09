@@ -6,12 +6,12 @@
   (:documentation "A code-unit-string in UTF-8 encoding form."))
 
 
-(defclass standard-utf-8-string (utf-8-string byte-vector-code-unit-string)
-  ((code-units :type '(vector (unsigned-byte 8)))))
-
-
 (defmethod custring ((custring utf-8-string))
   custring)
+
+
+(defclass standard-utf-8-string (utf-8-string byte-vector-code-unit-string)
+  ((code-units :type '(vector (unsigned-byte 8)))))
 
 
 (defgeneric utf-8-string (x)
