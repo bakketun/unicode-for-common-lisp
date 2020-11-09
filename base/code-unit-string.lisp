@@ -6,6 +6,10 @@
   (:documentation "A string of code units encoding Unicode text."))
 
 
+(defgeneric custring (x)
+  (:documentation "Convert x into a code-unit-string if not already so."))
+
+
 (defgeneric culength (custring)
   (:documentation "Number of code units in the code-unit-string."))
 
@@ -30,30 +34,34 @@ when it points in the middle of a well-formed code unit sequence.
 error - True if there was a decoding error."))
 
 
-#|
-;; Internal mixin helper class
-
-(defclass %with-code-units-vector ()
-  ((%code-units :type 'vector)))
-
-(defmethod culength ((custring %with-code-units-vector))
-  (length (slot-value custring '%code-units)))
-
-(defmethod curef ((custring %with-code-units-vector) (index fixnum))
-  (aref (slot-value custring '%code-units) index))
+(defgeneric code-point-count (custring)
+  (:documentation "Returns number of code points (scalar values) in string."))
 
 
-;; Standard implementation of code-unit-string. Slot names are implementation defined.
+(defmethod code-point-count ((custring code-unit-string))
+  (loop :with end := (culength custring)
+        :for index := 0 :then (nth-value 1 (code-point-at custring index))
+        :while (< index end)
+        :count t))
 
-(defclass standard-utf-8-string (utf-8-string %with-code-units-vector)
-  ((%code-units :type '(vector (unsigned-byte 8)))))
 
-(defclass standard-utf-16-string (utf-16-string %with-code-units-vector)
-  ((%code-units :type '(vector (unsigned-byte 16)))))
+(defmethod map-code-points (function (custring code-unit-string))
+  (loop :with end := (culength custring)
+        :with next
+        :with code-point
+        :for index := 0 :then next
+        :while (< index end)
+        :do (multiple-value-setq (code-point next)
+              (code-point-at custring index))
+        :do (funcall function code-point)))
 
-(defclass standard-utf-32-string (utf-32-string %with-code-units-vector)
-  ((%code-units :type '(vector (unsigned-byte 32)))))
-|#
 
-;; UTF-32 code-point-at
-
+(defgeneric code-point-vector (thing)
+  (:method ((custring code-unit-string))
+    (let ((code-points (make-array (code-point-count custring) :element-type 'scalar-value))
+          (index 0))
+      (map-code-points (lambda (code-point)
+                         (setf (aref code-points index) code-point)
+                         (incf index))
+                       custring)
+      code-points)))

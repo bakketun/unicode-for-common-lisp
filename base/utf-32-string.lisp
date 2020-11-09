@@ -6,6 +6,16 @@
   (:documentation "A code-unit-string in UTF-32 encoding form."))
 
 
+(defclass standard-utf-32-string (utf-32-string byte-vector-code-unit-string)
+  ((code-units :type '(vector (unsigned-byte 32)))))
+
+
+(defgeneric utf-32-string (x)
+  (:method ((x utf-32-string)) x)
+  (:method (x)
+    (make-instance 'standard-utf-32-string :code-units (code-point-vector (custring x)))))
+
+
 (defmethod code-point-at ((custring utf-32-string) index)
   (let ((code-point (curef custring index)))
     (typecase code-point

@@ -6,6 +6,10 @@
   (:documentation "A code-unit-string in UTF-8 encoding form."))
 
 
+(defclass standard-utf-8-string (utf-8-string byte-vector-code-unit-string)
+  ((code-units :type '(vector (unsigned-byte 8)))))
+
+
 (defmethod code-point-at ((custring utf-8-string) index)
   (let ((first-byte (curef custring index)))
     (etypecase first-byte
