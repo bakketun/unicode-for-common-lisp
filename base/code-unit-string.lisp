@@ -1,3 +1,5 @@
+(in-package #:unicode-base)
+
 (defclass code-unit-string ()
   ()
   (:documentation "A string of code units encoding Unicode text."))
@@ -54,10 +56,7 @@ error - True if there was a decoding error."))
 (defmethod curef ((custring char-code-unit-string) index)
   (char-code (cuchar custring index)))
 
-(defun curef? (custring index)
-  "Like curef, but return NIL if index is out of bounds."
-  (when (< 0 index (culength custring))
-    (curef custring index)))
+
 
 
 ;; Internal mixin helper class
@@ -84,27 +83,6 @@ error - True if there was a decoding error."))
   ((%code-units :type '(vector (unsigned-byte 32)))))
 
 
-;; Useful types for decoding
-
-(deftype code-point ()
-  '(integer 0 #x10FFFF))
-
-(deftype high-surrogate ()
-  '(integer #xD800 #xDBFF))
-
-(deftype low-surrogate ()
-  '(integer #xDC00 #xDFFF))
-
-(deftype surrogate ()
-  '(or high-surrogate low-surrogate))
-
-(deftype scalar-value ()
-  '(and
-    code-point
-    (not surrogate)))
-
-(defconstant +replacement-character+ #xFFFD)
-
 ;; UTF-32 code-point-at
 
 (defmethod code-point-at ((custring utf-32-string) index)
@@ -115,34 +93,37 @@ error - True if there was a decoding error."))
       (t             (values   +replacement-character+   (1+ index)  index  code-point)))))
 
 
-;; UTF-16 code-point-at
 
-(defun utf-16-decode (leading trailing)
-  (logior (ash  (1- (ldb (byte  4 6) leading)) 16)
-          (ash      (ldb (byte  6 0) leading)  10)
-                    (ldb (byte 10 0) trailing)))
+;; UTF-16 code-point-at
 
 (defmethod code-point-at ((custring utf-16-string) index)
   (let ((code-point (curef custring index))
         (next (1+ index))
         (start index)
         (error nil))
-    (etypecase code-point
-      (scalar-value)
-      (high-surrogate  (let ((leading   code-point)
-                             (trailing  (curef? custring (1+ index))))
-                         (typecase trailing
-                           (low-surrogate (setf code-point (utf-16-decode leading trailing)
-                                                next (+ 2 index)))
-                           (t             (setf code-point +replacement-character+
-                                                error code-point)))))
-      (low-surrogate   (let ((leading   (curef? custring (1- index)))
-                             (trailing  code-point))
-                         (typecase leading
-                           (high-surrogate (setf code-point (utf-16-decode leading trailing)
-                                                 start (1- index)))
-                           (t              (setf code-point +replacement-character+
-                                                 error code-point))))))
+    (flet ((curef? (index)
+             (when (< 0 index (culength custring))
+               (curef custring index)))
+           (decode (leading trailing)
+             (logior (ash  (1- (ldb (byte  4 6) leading)) 16)
+                     (ash      (ldb (byte  6 0) leading)  10)
+                     (ldb (byte 10 0) trailing))))
+      (etypecase code-point
+        (scalar-value)
+        (high-surrogate  (let ((leading   code-point)
+                               (trailing  (curef? (1+ index))))
+                           (typecase trailing
+                             (low-surrogate (setf code-point (decode leading trailing)
+                                                  next (+ 2 index)))
+                             (t             (setf code-point +replacement-character+
+                                                  error code-point)))))
+        (low-surrogate   (let ((leading   (curef? (1- index)))
+                               (trailing  code-point))
+                           (typecase leading
+                             (high-surrogate (setf code-point (decode leading trailing)
+                                                   start (1- index)))
+                             (t              (setf code-point +replacement-character+
+                                                   error code-point)))))))
     (values code-point next start error)))
 
 
