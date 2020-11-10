@@ -18,7 +18,7 @@
    #:code-point
    #:code-point-at
    #:code-point-count
-   #:code-point-sequence-utf-8-length
+   #:code-point-utf-16-encode
    #:code-point-utf-8-encode
    #:code-unit-string
    #:code-unit-string-string

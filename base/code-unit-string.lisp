@@ -85,26 +85,15 @@ error - True if there was a decoding error.")
   (:method ((custring code-unit-string))
     (let ((length 0))
       (map-code-points (lambda (code-point)
-                         (check-type code-point scalar-value)
-                         (incf length (etypecase code-point
-                                        (bmp-code-point 1)
-                                        (t 2))))
+                         (incf length (code-point-utf-16-encode code-point)))
                        custring)
       (let ((vector (make-array length :element-type '(unsigned-byte 16)))
             (index 0))
         (map-code-points (lambda (code-point)
-                           (etypecase code-point
-                             (bmp-code-point
-                              (setf (aref vector index) code-point)
-                              (incf index))
-                             (t
-                              (setf (aref vector index) (logior +first-high-surrogate+
-                                                                (1- (ldb (byte 5 16) code-point))
-                                                                (ldb (byte 6 10) code-point)))
-                              (incf index)
-                              (setf (aref vector index) (logior +first-low-surrogate+
-                                                                (ldb (byte 10 0) code-point)))
-                              (incf index))))
+                           (multiple-value-bind (size cu0 cu1)
+                               (code-point-utf-16-encode code-point)
+                             (setf                    (aref vector index) cu0)   (incf index)
+                             (when (< 1 size)   (setf (aref vector index) cu1)   (incf index))))
                          custring)
         vector))))
 

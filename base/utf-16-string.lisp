@@ -53,3 +53,18 @@
                              (t              (setf code-point +replacement-character+
                                                    error code-point)))))))
     (values code-point next start error)))
+
+
+(defun code-point-utf-16-encode (code-point)
+  "Returns three values: code unit count, code unit 0, code unit 1."
+  (check-type code-point scalar-value)
+  (etypecase code-point
+    (bmp-code-point
+     (values 1 code-point))
+    (t
+     (values 2
+             (logior +first-high-surrogate+
+                       (1- (ldb (byte 5 16) code-point))
+                       (ldb (byte 6 10) code-point))
+             (logior +first-low-surrogate+
+                     (ldb (byte 10 0) code-point))))))

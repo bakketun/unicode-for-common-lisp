@@ -27,15 +27,7 @@
                                            ~   (logior #b10000000   (ldb (byte  6        6)   code-point))
                                            ~   (logior #b10000000   (ldb (byte  6        0)   code-point))
                                            ~                                                  0))
-    ((integer #x100000 #x10ffff)   (values 4   (logior #b11110000   (ldb (byte  3       18)   code-point))
+    ((integer  #x10000 #x10ffff)   (values 4   (logior #b11110000   (ldb (byte  3       18)   code-point))
                                            ~   (logior #b10000000   (ldb (byte  6       12)   code-point))
                                            ~   (logior #b10000000   (ldb (byte  6        6)   code-point))
                                            ~   (logior #b10000000   (ldb (byte  6        0)   code-point))))))
-
-
-(defun code-point-sequence-utf-8-length (sequence)
-  (let ((length 0))
-    (map 'nil (lambda (code-point)
-                (incf length (code-point-utf-8-encode code-point)))
-         sequence)
-    length))
