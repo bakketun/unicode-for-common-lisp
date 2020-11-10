@@ -31,11 +31,13 @@ next-index - The index of the next code-point
 start - The start index of the code point. Will be less than index
 when it points in the middle of a well-formed code unit sequence.
 
-error - True if there was a decoding error."))
+error - True if there was a decoding error.")
+  (:method (x index) (code-point-at (custring x) index)))
 
 
 (defgeneric code-point-count (custring)
-  (:documentation "Returns number of code points (scalar values) in string."))
+  (:documentation "Returns number of code points (scalar values) in string.")
+  (:method (x) (custring x)))
 
 
 (defmethod code-point-count ((custring code-unit-string))

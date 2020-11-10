@@ -11,7 +11,11 @@
 
 
 (defclass standard-utf-8-string (utf-8-string byte-vector-code-unit-string)
-  ((code-units :type '(vector (unsigned-byte 8)))))
+  ((code-units :type (vector (unsigned-byte 8)))))
+
+
+(defmethod shared-initialize ((custring standard-utf-8-string) slot-names &key code-units)
+  (setf (slot-value custring 'code-units) (coerce code-units '(vector (unsigned-byte 8)))))
 
 
 (defgeneric utf-8-string (x)
