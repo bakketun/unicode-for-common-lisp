@@ -15,9 +15,9 @@
   (:method (x)
     (map 'string
          #'code-char
-         #+string-is-utf-8 (utf-8-vector x)
-         #+string-is-utf-16 (utf-16-vector x)
-         #+string-is-utf-32 (code-point-vector x))))
+         #+string-is-utf-8 (utf-8-code-unit-vector x)
+         #+string-is-utf-16 (utf-16-code-unit-vector x)
+         #+string-is-utf-32 (utf-32-code-unit-vector x))))
 
 
 (defmethod custring ((string string))

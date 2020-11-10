@@ -17,7 +17,7 @@
 (defgeneric utf-16-string (x)
   (:method ((x utf-16-string)) x)
   (:method (x)
-    (make-instance 'standard-utf-16-string :code-units (utf-16-vector x))))
+    (make-instance 'standard-utf-16-string :code-units (utf-16-code-unit-vector x))))
 
 
 (defmethod code-point-at ((custring utf-16-string) index)

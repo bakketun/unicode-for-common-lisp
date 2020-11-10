@@ -17,7 +17,7 @@
 (defgeneric utf-32-string (x)
   (:method ((x utf-32-string)) x)
   (:method (x)
-    (make-instance 'standard-utf-32-string :code-units (code-point-vector x))))
+    (make-instance 'standard-utf-32-string :code-units (utf-32-code-unit-vector x))))
 
 
 (defmethod code-point-at ((custring utf-32-string) index)
