@@ -27,9 +27,7 @@
    #:culength
    #:curef
    #:custring
-   #:map-code-points
    #:scalar-value
-   #:scalar-value-vector
    #:standard-utf-16-string
    #:standard-utf-32-string
    #:standard-utf-8-string

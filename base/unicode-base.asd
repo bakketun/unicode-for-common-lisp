@@ -9,7 +9,6 @@
                (:file "constants")
                (:file "features")
                (:file "types")
-               (:file "scalar-value-sequence")
                (:file "code-unit-string")
                (:file "char-code-unit-string")
                (:file "byte-vector-code-unit-string")

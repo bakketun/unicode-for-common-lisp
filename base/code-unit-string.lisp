@@ -47,7 +47,7 @@ error - True if there was a decoding error.")
         :count t))
 
 
-(defmethod map-code-points (function (custring code-unit-string))
+(defun map-code-points (function custring)
   (loop :with end := (culength custring)
         :with next
         :with code-point
