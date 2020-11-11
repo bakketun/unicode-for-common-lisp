@@ -8,5 +8,6 @@
   :components ((:file "package")
                (:file "constants")
                (:file "types")
+               (:file "standard-char")
                (:file "features")
                ))

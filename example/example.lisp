@@ -1,7 +1,7 @@
 (in-package #:unicode-example)
 
 (defmacro show (&whole whole &body body)
-  `(progn
+  `(with-simple-restart (continue "Skip example")
      (format t "~&~%~S~&" ',whole)
      (format t "~&~80@{-~}~{~&~S~}~&~:*~80@{=~}"
              (multiple-value-list (progn ,@body)))))
@@ -9,6 +9,7 @@
 
 (show (custring "Hello World"))
 
+(show (culength (custring "Hello World")))
 
 (show (code-point-count (custring "Blåbærsyltetøy")))
 
@@ -21,6 +22,9 @@
 (show (utf-16-code-unit-vector "Blåbærsyltetøy"))
 (show (utf-8-code-unit-vector "Blåbærsyltetøy"))
 
+
+(show
+  (string* (make-instance 'standard-utf-8-string :code-units '(65 66 67))))
 
 (show
   (string* (make-instance 'standard-utf-8-string :code-units '(195 165))))

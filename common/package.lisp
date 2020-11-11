@@ -14,8 +14,11 @@
    #:+replacement-character+
    #:bmp-code-point
    #:code-point
+   #:code-point-semi-and-standard-char
    #:high-surrogate
    #:low-surrogate
    #:scalar-value
+   #:semi-and-standard-char
+   #:semi-and-standard-char-code-point
    #:surrogate
    ))
