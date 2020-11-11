@@ -11,7 +11,7 @@
 
 
 (defclass standard-utf-32-string (utf-32-string byte-vector-code-unit-string)
-  ((code-units :type '(vector (unsigned-byte 32)))))
+  ((code-units :type (vector (unsigned-byte 32)))))
 
 
 (defmethod shared-initialize ((custring standard-utf-32-string) slot-names &key code-units)
