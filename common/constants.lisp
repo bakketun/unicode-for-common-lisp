@@ -1,4 +1,4 @@
-(in-package #:unicode-base)
+(in-package #:unicode-common)
 
 (defconstant +replacement-character+ #xFFFD)
 (defconstant +object-replacement-character+ #xFFFC)

@@ -1,4 +1,4 @@
-(in-package #:unicode-base)
+(in-package #:unicode-common)
 
 #-(or string-is-utf-8
       string-is-utf-16

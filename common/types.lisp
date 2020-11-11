@@ -1,4 +1,4 @@
-(in-package #:unicode-base)
+(in-package #:unicode-common)
 
 (deftype code-point ()
   `(integer ,+first-code-point+ ,+last-code-point+))

@@ -1,5 +1,7 @@
 (defpackage #:unicode-base
-  (:use :common-lisp)
+  (:use
+   :common-lisp
+   :unicode-common)
   (:export
    #:+bmp-code-point-limit+
    #:+code-point-limit+
