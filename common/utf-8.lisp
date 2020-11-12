@@ -35,65 +35,66 @@
 
 (defmacro code-point-decode-utf-8 (&key
                                      ;; input
-                                     index ;; where to try decoding
-                                     start ;; limits for decoding
-                                     end
-                                     octet ;; octet accessor name
+                                     index-form ;; where to try decoding
+                                     start-form ;; limits for decoding
+                                     end-form
+                                     ref-form ;; * is the index
                                      ;; output
-                                     code-point
-                                     subsequence-start
-                                     subsequence-end
-                                     errorp
+                                     code-point-place
+                                     start-place
+                                     end-place
+                                     errorp-place
                                      )
-  `(macrolet ((%octet (n)
-                (substitute n '* ',octet)))
-     (let ((%bytes-needed     0)
-           (%lower-boundary   #x80)
-           (%upper-boundary   #xBF)
-           (%start            ,start)
-           (%end              ,end))
-       (setf ,subsequence-start   ,index
-             ,subsequence-end     (1+ ,subsequence-start)
-             ,code-point      (%octet ,subsequence-start)
-             ,errorp          nil)
-       (block %decode
-         ;; 7-bit?
-         (when (<= #x00 ,code-point #x7F)
-           (return-from %decode))
+  (with-gensyms (ref decode bytes-needed lower-boundary upper-boundary start end octet)
+    `(macrolet ((,ref (*)
+                  ,ref-form))
+       (let ((,bytes-needed        0)
+             (,lower-boundary      #x80)
+             (,upper-boundary      #xBF)
+             (,start               ,start-form)
+             (,end                 ,end-form))
+         (setf ,start-place        ,index-form
+               ,end-place          (1+ ,start-place)
+               ,code-point-place   (,ref ,start-place)
+               ,errorp-place       nil)
+         (block ,decode
+           ;; 7-bit?
+           (when (<= #x00 ,code-point-place #x7F)
+             (return-from ,decode))
 
-         ;; In the middle of subsequence?
-         (loop :while (<= #x80 ,code-point #xBF)
-               :while (< %start ,subsequence-start)
-               :repeat 3
-               :do (decf ,subsequence-start)
-                   (decf ,subsequence-end)
-                   (setf ,code-point (%octet ,subsequence-start)))
+           ;; In the middle of subsequence?
+           (loop :while (<= #x80 ,code-point-place #xBF)
+                 :while (< ,start ,start-place)
+                 :repeat 3
+                 :do (decf ,start-place)
+                     (decf ,end-place)
+                     (setf ,code-point-place (,ref ,start-place)))
 
-         ;; Inspect first byte of subsequence
-         (typecase ,code-point
-           ((integer #xC2 #xDF)   (setf   %bytes-needed 1                                              ))
-           ((integer #xE0 #xE0)   (setf   %bytes-needed 2   %lower-boundary #xA0                        ))
-           ((integer #xE1 #xEC)   (setf   %bytes-needed 2                         %upper-boundary #xBF  ))
-           ((integer #xED #xED)   (setf   %bytes-needed 2                         %upper-boundary #x9F  ))
-           ((integer #xEE #xEF)   (setf   %bytes-needed 2                                              ))
-           ((integer #xF0 #xF0)   (setf   %bytes-needed 3   %lower-boundary #x90                        ))
-           ((integer #xF0 #xF3)   (setf   %bytes-needed 3                                              ))
-           ((integer #xF4 #xF4)   (setf   %bytes-needed 3                         %upper-boundary #x8F  ))
-           (t                     (setf   ,errorp :first-octet-invalid) (return-from %decode)))
+           ;; Inspect first byte of subsequence
+           (typecase ,code-point-place
+             ((integer #xC2 #xDF)   (setf   ,bytes-needed 1                                               ))
+             ((integer #xE0 #xE0)   (setf   ,bytes-needed 2   ,lower-boundary #xA0                        ))
+             ((integer #xE1 #xEC)   (setf   ,bytes-needed 2                         ,upper-boundary #xBF  ))
+             ((integer #xED #xED)   (setf   ,bytes-needed 2                         ,upper-boundary #x9F  ))
+             ((integer #xEE #xEF)   (setf   ,bytes-needed 2                                               ))
+             ((integer #xF0 #xF0)   (setf   ,bytes-needed 3   ,lower-boundary #x90                        ))
+             ((integer #xF0 #xF3)   (setf   ,bytes-needed 3                                               ))
+             ((integer #xF4 #xF4)   (setf   ,bytes-needed 3                         ,upper-boundary #x8F  ))
+             (t                     (setf   ,errorp-place :first-octet-invalid) (return-from ,decode)))
 
-         ;; Mask bits of first byte
-         (setf ,code-point (ldb (byte (- 6 %bytes-needed) 0) ,code-point))
+           ;; Mask bits off first byte
+           (setf ,code-point-place (ldb (byte (- 6 ,bytes-needed) 0) ,code-point-place))
 
-         ;; Decode subsequence
-         (loop :repeat %bytes-needed :do
-           (unless (< ,subsequence-end %end)
-             (setf ,errorp :truncated-subsequence)
-             (return-from %decode))
-           (let ((%octet (%octet ,subsequence-end)))
-             (incf ,subsequence-end)
-             (unless (<= %lower-boundary %octet %upper-boundary)
-               (setf ,errorp :invalid-trailing-octet)
-               (return-from %decode))
-             (setf ,code-point (logior (ash ,code-point 6) (ldb (byte 6 0) %octet))
-                   %lower-boundary #x80
-                   %upper-boundary #xBF)))))))
+           ;; Decode subsequence
+           (loop :repeat ,bytes-needed :do
+             (unless (< ,end-place ,end)
+               (setf ,errorp-place :truncated-subsequence)
+               (return-from ,decode))
+             (let ((,octet (,ref ,end-place)))
+               (incf ,end-place)
+               (unless (<= ,lower-boundary ,octet ,upper-boundary)
+                 (setf ,errorp-place :invalid-trailing-octet)
+                 (return-from ,decode))
+               (setf ,code-point-place (logior (ash ,code-point-place 6) (ldb (byte 6 0) ,octet))
+                     ,lower-boundary #x80
+                     ,upper-boundary #xBF))))))))

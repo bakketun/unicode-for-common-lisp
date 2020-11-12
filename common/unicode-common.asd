@@ -6,6 +6,7 @@
   :depends-on ()
   :serial t
   :components ((:file "package")
+               (:file "utils")
                (:file "constants")
                (:file "types")
                (:file "standard-char")

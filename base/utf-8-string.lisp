@@ -22,12 +22,12 @@
 
 (defmethod code-point-at ((custring utf-8-string) index)
   (let (code-point subsequence-start subsequence-end errorp)
-    (code-point-decode-utf-8 :index index
-                             :start 0
-                             :end (culength custring)
-                             :octet (curef custring *)
-                             :code-point code-point
-                             :subsequence-start subsequence-start
-                             :subsequence-end subsequence-end
-                             :errorp errorp)
+    (code-point-decode-utf-8 :index-form index
+                             :start-form 0
+                             :end-form (culength custring)
+                             :ref-form `(curef custring ,*)
+                             :code-point-place code-point
+                             :start-place subsequence-start
+                             :end-place subsequence-end
+                             :errorp-place errorp)
     (values (if errorp +replacement-character+ code-point) subsequence-end subsequence-start errorp)))
