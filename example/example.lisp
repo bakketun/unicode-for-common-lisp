@@ -39,9 +39,5 @@
   (show (string* (make-instance 'standard-utf-16-string :code-units #(#xd800 #xdf02))))
   (show (string* (make-instance 'standard-utf-32-string :code-units #(#x00010302))))
 
-  (show (reduce #'+ '(65 #x10302) :key #'code-point-utf-8-encode))
-
-  (show (reduce #'+ '(65 #x10302) :key #'code-point-utf-16-encode))
-
   (string* 'fooo)
   )
