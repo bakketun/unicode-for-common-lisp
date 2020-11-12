@@ -8,8 +8,6 @@
 
 (defun run ()
 
-  (show (string* (make-instance 'standard-utf-8-string :code-units '(195 165))))
-
   (show (custring "Hello World"))
 
   (show (culength (custring "Hello World")))
@@ -27,19 +25,19 @@
 
 
   (show
-    (string* (make-instance 'standard-utf-8-string :code-units '(65 66 67))))
+    (string* (make-instance 'standard-utf-8-string :code-units #(65 66 67))))
 
   (show
-    (string* (make-instance 'standard-utf-8-string :code-units '(195 165))))
+    (string* (make-instance 'standard-utf-8-string :code-units #(195 165))))
 
 
   (show
-    (code-point-at (make-instance 'standard-utf-8-string :code-units '(165)) 0))
+    (code-point-at (make-instance 'standard-utf-8-string :code-units #(165)) 0))
 
 
-  (show (string* (make-instance 'standard-utf-8-string :code-units '(#xf0 #x90 #x8c #x82))))
-  (show (string* (make-instance 'standard-utf-16-string :code-units '(#xd800 #xdf02))))
-  (show (string* (make-instance 'standard-utf-32-string :code-units '(#x00010302))))
+  (show (string* (make-instance 'standard-utf-8-string :code-units #(#xf0 #x90 #x8c #x82))))
+  (show (string* (make-instance 'standard-utf-16-string :code-units #(#xd800 #xdf02))))
+  (show (string* (make-instance 'standard-utf-32-string :code-units #(#x00010302))))
 
   (show (reduce #'+ '(65 #x10302) :key #'code-point-utf-8-encode))
 
