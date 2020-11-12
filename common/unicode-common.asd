@@ -10,4 +10,5 @@
                (:file "types")
                (:file "standard-char")
                (:file "features")
+               (:file "utf-8")
                ))
