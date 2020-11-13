@@ -14,7 +14,9 @@
    #:+replacement-character+
    #:bmp-code-point
    #:code-point
+   #:code-point-decode-utf-16
    #:code-point-decode-utf-8
+   #:code-point-encode-utf-16
    #:code-point-encode-utf-8
    #:code-point-semi-and-standard-char
    #:high-surrogate
