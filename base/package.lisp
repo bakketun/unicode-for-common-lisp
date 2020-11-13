@@ -33,7 +33,7 @@
    #:standard-utf-16-string
    #:standard-utf-32-string
    #:standard-utf-8-string
-   #:string*
+   #:unicode-to-string
    #:utf-16-code-unit-vector
    #:utf-16-string
    #:utf-32-code-unit-vector
