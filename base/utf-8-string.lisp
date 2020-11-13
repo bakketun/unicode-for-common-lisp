@@ -22,7 +22,8 @@
 
 (defmethod code-point-at ((custring utf-8-string) index)
   (let (code-point subsequence-start subsequence-end errorp)
-    (code-point-decode-utf-8 :index-form index
+    (code-point-decode-utf-8 :backtrackp t
+                             :index-form index
                              :start-form 0
                              :end-form (culength custring)
                              :ref-form `(curef custring ,*)
@@ -30,4 +31,4 @@
                              :start-place subsequence-start
                              :end-place subsequence-end
                              :errorp-place errorp)
-    (values (if errorp +replacement-character+ code-point) subsequence-end subsequence-start errorp)))
+    (values code-point subsequence-end subsequence-start errorp)))

@@ -40,4 +40,6 @@
   (show (string* (make-instance 'standard-utf-32-string :code-units #(#x00010302))))
 
   (string* 'fooo)
+
+  (show (code-point-at (make-instance 'standard-utf-8-string :code-units #(195 165 165)) 2))
   )
